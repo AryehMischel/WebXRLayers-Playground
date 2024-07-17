@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js vr - layers</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+</head>
+
+<body>
+
+    <div>
+
+        <br />
+
+        <p> sample showing the lose of the webgl context after passing empty array as our ArrayBufferView for gl.compressedTexSubImage2D src</p>
+        <p> two relevant methods: createLayerWithoutData(), createLayerWithBadData().</p>
+        <p> these methods can be called from the window</p>
+
+        <p> my results on quest 2</p>
+        <p> createLayerWithoutData() loses the context</p>
+        <p> (I haven't explored this much) createLayerWithBadData() gave me "[.WebGL-0x2012b9b00]GL ERROR :GL_INVALID_VALUE : glCompressedTexSubImage2D: size is not correct for dimensions" </p>
+
+   
+
+
+        <br />
+
+    </div>
+
+
+    <script type="importmap">
+        {
+          "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.166.1/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.166.1/examples/jsm/"
+          }
+        }
+      </script>
+
+    <script defer type="module">
+        import * as THREE from 'three';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { HTMLMesh } from 'three/addons/interactive/HTMLMesh.js';
+        import { InteractiveGroup } from 'three/addons/interactive/InteractiveGroup.js';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+        import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
+
+
+        let camera, scene, renderer;
+
+
+        let compressedData = {
+            "height": 512,
+            "width": 512,
+            "data": null,
+        }
+
+    
+
+        let equirectLayer = null;
+        let projLayer = null;
+        
+        let eqrtTextureWidth = 0;
+        let eqrtTextureHeight = 0;
+        let eqrtRadius = 40;
+       
+        let glBinding;
+        let mediaBinding;
+        let xrSpace;
+       
+        let xrSession = null;
+        let gl;
+        let ext;
+
+        
+     function createLayerWithoutData(){
+           let buff = new Uint8Array(); 
+           compressedData.data = buff
+           
+           if(xrSession){
+            createEquireLayer()
+           }else{
+                console.log("must be in a supported xr session")
+            }
+
+        }
+
+        function createLayerWithBadData(){
+            let buff = new Uint8Array(2); 
+            compressedData.data = buff
+          
+            if(xrSession){
+                createEquireLayer()
+            } else{
+                console.log("must be in a supported xr session")
+            }
+        }
+
+        window.createLayerWithoutData = createLayerWithoutData
+        window.createLayerWithBadData = createLayerWithBadData
+        
+
+        function createEquireLayer() {
+
+
+            eqrtTextureWidth = compressedData.width
+            eqrtTextureHeight = compressedData.height
+
+            equirectLayer = glBinding.createEquirectLayer({
+                space: xrSpace,
+                viewPixelWidth: compressedData.width,
+                viewPixelHeight: compressedData.height,
+                layout: "mono",
+                colorFormat: ext.COMPRESSED_RGBA8_ETC2_EAC,
+                isStatic: "true",
+            });
+
+            equirectLayer.centralHorizontalAngle = Math.PI * 2;
+            equirectLayer.upperVerticalAngle = -Math.PI / 2.0;
+            equirectLayer.lowerVerticalAngle = Math.PI / 2.0;
+            equirectLayer.radius = eqrtRadius;
+
+            xrSession.updateRenderState({
+                layers: [ equirectLayer,
+                          xrSession.renderState.layers[0]
+                        ]
+            });
+
+        }
+
+      
+        
+        
+        init();
+
+        function init() {
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
+            camera.position.set(0, 1.6, 3);
+            THREE.ColorManagement.enabled = true;
+
+            const hemLight = new THREE.HemisphereLight(0x808080, 0x606060, 3);
+            const light = new THREE.DirectionalLight(0xffffff, 3);
+            scene.add(hemLight, light);
+
+
+            renderer = new THREE.WebGLRenderer({ antialias: false });
+
+            window.renderer = renderer
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setAnimationLoop(animate);
+            renderer.setClearAlpha(1);
+            renderer.setClearColor(new THREE.Color(0), 0);
+            renderer.xr.enabled = true;
+
+            document.body.appendChild(renderer.domElement);
+            document.body.appendChild(VRButton.createButton(renderer));
+
+
+            // controllers
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, - 10)
+            ]);
+            const line = new THREE.Line(lineGeometry, new THREE.LineBasicMaterial({ color: 0x5555ff }));
+            line.renderOrder = 1;
+
+            const controllerModelFactory = new XRControllerModelFactory();
+            const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
+
+            const controllers = [
+                renderer.xr.getController(0),
+                renderer.xr.getController(1)
+            ];
+
+            controllers.forEach((controller, i) => {
+
+                const controllerGrip = renderer.xr.getControllerGrip(i);
+                controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
+                scene.add(controllerGrip);
+
+                const hand = renderer.xr.getHand(i);
+                hand.add(handModelFactory.createHandModel(hand));
+
+                controller.add(line.clone());
+                scene.add(controller, controllerGrip, hand);
+
+            });
+
+
+            const group = new InteractiveGroup();
+            group.listenToXRControllerEvents(controllers[0]);
+            group.listenToXRControllerEvents(controllers[1]);
+            scene.add(group);
+
+            window.addEventListener('resize', onWindowResize, false);
+
+        }
+
+
+        function onWindowResize() {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        }
+
+     
+
+
+        let first = true;
+
+        function animate(t, frame) {
+
+            const xr = renderer.xr;
+            const session = xr.getSession();
+            xrSession = session;
+            gl = renderer.getContext();
+            window.gl = gl
+
+            if (first) { 
+                ext = gl.getExtension("WEBGL_compressed_texture_etc")
+                if (ext) {console.log("supports WEBGL_compressed_texture_etc")} 
+                first = false;
+
+            }
+
+
+            if (session && session.renderState.layers !== undefined && session.hasMediaLayer === undefined) {
+
+
+                session.hasMediaLayer = true;
+                session.requestReferenceSpace('local-floor').then((refSpace) => {
+
+                    glBinding = xr.getBinding();
+                    window.mediaBinding = mediaBinding;
+                    xrSpace = refSpace;
+
+                    mediaBinding = new XRMediaBinding(session);
+                    window.glBinding = glBinding;
+
+
+                });
+
+            }
+
+
+
+
+            if (session && equirectLayer && equirectLayer.needsRedraw) {
+                let glayer = glBinding.getSubImage(equirectLayer, frame);
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, compressedData.width, compressedData.height, ext.COMPRESSED_RGBA8_ETC2_EAC , compressedData.data); 
+            }
+
+
+
+            renderer.render(scene, camera);
+
+        }
+
+
+
+
+    </script>
