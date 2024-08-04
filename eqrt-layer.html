@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js vr - layers</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+</head>
+
+<body>
+
+    <div id="info">
+        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+
+        <br />
+
+        <p> ⭐ Experimenting to see if we can use gpu compressed texture for our webxr layers. </p>
+        <p> 😿 This is hurting my noob brain</p>
+        <p> 🥅 Goal create two webxr quad layers.</p>
+        <p> * One with an rgb data source </p>
+        <p> * The other whose source will be a gpu compressed texture</p>
+
+
+
+        <br />
+
+    </div>
+
+    <script src="./encoder/build/basis_loader.js"></script>
+
+    <script type="importmap">
+			{
+			  "imports": {
+				"three": "./three.js-master/three.js-master/build/three.module.js",
+				"three/addons/": "./three.js-master/three.js-master/examples/jsm/"
+			  }
+			}
+    </script>
+
+    <script defer type="module">
+        import * as THREE from 'three';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { HTMLMesh } from 'three/addons/interactive/HTMLMesh.js';
+        import { InteractiveGroup } from 'three/addons/interactive/InteractiveGroup.js';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+        import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
+        import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+
+        let sources = ['./textures/compressed360Stereo/example.ktx2']
+
+
+
+        let camera, scene, renderer;
+
+        let equirectLayer = null;
+        let projLayer = null;
+        let eqrtRadius = 40;
+
+        let gl;
+        let glBinding;
+        let mediaBinding;
+
+        let xrSpace;
+        let xrSession = null;
+
+
+        let ext = null
+        let ktx2Loader
+        let ktx2Textures = []
+        let compressedIMGS = {}
+
+        let compressed_360_Texture_Data_Array = [];
+        let compressed_360_Texture_Data = new Map()
+        let active_360_Texture_Data = null;
+
+        const supportedCompressedFormats = new Map([
+            [37496, "ETC2_EXT.COMPRESSED_RGBA8_ETC2_EAC"],
+            [37492, "ETC2_EXT.COMPRESSED_RGB8_ETC2"],
+            [37808, "ext.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"],
+            [1023, "srgb"]
+
+        ]);
+
+        init();
+
+        function init() {
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
+            camera.position.set(0, 1.6, 3);
+            THREE.ColorManagement.enabled = true;
+
+            const hemLight = new THREE.HemisphereLight(0x808080, 0x606060, 3);
+            const light = new THREE.DirectionalLight(0xffffff, 3);
+            
+            scene.add(hemLight, light);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setAnimationLoop(animate);
+            renderer.setClearAlpha(1);
+            renderer.setClearColor(new THREE.Color(0), 0);
+            renderer.xr.enabled = true;
+
+            document.body.appendChild(renderer.domElement);
+            document.body.appendChild(VRButton.createButton(renderer));
+
+
+            // controllers
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, - 10)
+            ]);
+
+
+            const line = new THREE.Line(lineGeometry, new THREE.LineBasicMaterial({ color: 0x5555ff }));
+
+
+            // The invisible dummyMesh quads and the guiMesh need to be rendered before the controller lines so that they
+            // leave a hole in the depth buffer that the lines can intersect.
+            line.renderOrder = 1;
+
+            const controllerModelFactory = new XRControllerModelFactory();
+            const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
+
+            //
+
+            const controllers = [
+                renderer.xr.getController(0),
+                renderer.xr.getController(1)
+            ];
+
+            controllers.forEach((controller, i) => {
+
+                const controllerGrip = renderer.xr.getControllerGrip(i);
+                controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
+                scene.add(controllerGrip);
+
+                const hand = renderer.xr.getHand(i);
+                hand.add(handModelFactory.createHandModel(hand));
+
+                controller.add(line.clone());
+                scene.add(controller, controllerGrip, hand);
+
+            });
+
+            const group = new InteractiveGroup();
+            group.listenToXRControllerEvents(controllers[0]);
+            group.listenToXRControllerEvents(controllers[1]);
+            scene.add(group);
+
+
+             // Create the HTML button
+             const button = document.createElement('button');
+            button.innerText = 'Click Me';
+            button.style.position = 'absolute';
+            button.style.left = '50%';
+            button.style.top = '50%';
+            button.style.transform = 'translate(-50%, -50%)';
+            button.style.zIndex = 1;
+            document.body.appendChild(button);
+
+            // Create an HTMLMesh to attach the button to the plane
+            const mesh = new HTMLMesh(button);
+            mesh.position.x = - 0.75;
+            mesh.position.y = 1.5;
+            mesh.position.z = - 0.5;
+            mesh.rotation.y = Math.PI / 4;
+            mesh.scale.setScalar(2);
+
+
+
+            // Handle button click
+            button.addEventListener('click', () => {
+                createEquirectLayerByIndex(0)
+            });
+
+
+            group.add(mesh);
+     
+
+
+            window.addEventListener('resize', onWindowResize, false);
+
+
+        }
+
+
+        function createEquireLayer(height = active_360_Texture_Data.height, width = active_360_Texture_Data.width, radius = eqrtRadius, colorFormat = active_360_Texture_Data.format) {
+
+
+
+            let _equirectLayer = glBinding.createEquirectLayer({
+                space: xrSpace,
+                viewPixelWidth: width,
+                viewPixelHeight: height,
+                layout: "mono",
+                colorFormat: eval(colorFormat),
+                isStatic: "true",
+
+
+            });
+
+            _equirectLayer.centralHorizontalAngle = Math.PI * 2;
+            _equirectLayer.upperVerticalAngle = -Math.PI / 2.0;
+            _equirectLayer.lowerVerticalAngle = Math.PI / 2.0;
+            _equirectLayer.radius = radius;
+
+            if (equirectLayer) {
+                console.log('destroying')
+                equirectLayer.destroy()
+
+            }
+
+            equirectLayer = _equirectLayer
+
+            {
+                xrSession.updateRenderState({
+                    layers: [
+                        equirectLayer,
+                        xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+                    ]
+                });
+
+            }
+
+        }
+
+
+        function createEquirectLayerByIndex(index) {
+            active_360_Texture_Data = compressed_360_Texture_Data_Array[index]
+            createEquireLayer()
+
+        }
+
+
+        function destroylayer() {
+            if (equirectLayer) {
+                console.log('destroying')
+                equirectLayer.destroy()
+                equirectLayer = null
+
+            }
+
+        }
+
+
+
+
+        function loadImages(links = sources) {
+            for (let link in links) {
+                getTexturedData(links[link])
+            }
+
+        }
+
+
+        function onWindowResize() {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        }
+
+
+
+        function createKTX2Loader() {
+
+            ktx2Loader = new KTX2Loader();
+            ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
+            ktx2Loader.detectSupport(renderer);
+
+        }
+
+
+        function getTexturedData(url = sources[0]) {
+
+            ktx2Loader.load(url, //will also pass us the compressed data toS ./textures/ktx2/cubemap_etc1s.ktx2  //'./textures/ktx2/cubemap_etc1s.ktx2'
+                (texture) => {
+
+                    console.log("jgfhgfgjh", texture)
+
+
+                    if (texture.isCompressedCubeTexture) {
+
+
+                        //uh-oh
+
+
+                    } else {
+                        //create equirectangular
+
+                        console.log("creating equirectangular texture")
+
+                        let equireCompressedTexture = {
+                            "height": texture.mipmaps[0].height,
+                            "width": texture.mipmaps[0].width,
+                            "data": texture.mipmaps[0].data,
+                            "format": supportedCompressedFormats.get(texture.format),
+
+                        }
+
+                        compressed_360_Texture_Data_Array.push(equireCompressedTexture)
+
+
+                    }
+
+                }, null, null);
+        }
+
+
+
+
+
+
+        function setImageData(data, height, width) {
+            //helper function executed by the loader when are data is loaded
+
+
+
+        }
+
+
+
+
+
+        //loop
+
+
+        let first = true;
+
+        function animate(t, frame) {
+
+            const xr = renderer.xr;
+            const session = xr.getSession();
+            xrSession = session;
+            window.xrSession = xrSession
+            gl = renderer.getContext();
+            window.gl = gl
+
+            if (first) {
+
+                ext = gl.getExtension("WEBGL_compressed_texture_astc")
+
+
+                if (ext) {
+                    console.log("supports WEBGL_compressed_texture_etc")
+                } else {
+                    console.log("fuck")
+                }
+
+
+                createKTX2Loader()
+                loadImages()
+                first = false;
+
+            }
+
+
+
+
+            if (session && session.renderState.layers !== undefined && session.hasMediaLayer === undefined
+            ) {
+
+                session.hasMediaLayer = true;
+                session.requestReferenceSpace('local-floor').then((refSpace) => {
+
+                    glBinding = xr.getBinding();
+
+                    window.mediaBinding = mediaBinding;
+                    xrSpace = refSpace;
+
+                    mediaBinding = new XRMediaBinding(session);
+                    window.glBinding = glBinding;
+
+
+                });
+
+            }
+
+
+
+
+            if (session && equirectLayer && equirectLayer.needsRedraw) {
+
+                let glayer = glBinding.getSubImage(equirectLayer, frame);
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), active_360_Texture_Data.data);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+
+            }
+
+
+
+
+            
+            renderer.render(scene, camera);
+
+
+
+            
+        }
+
+
+
+
+
+
+
+    </script>
+
+    <script>
+
+
+    </script>

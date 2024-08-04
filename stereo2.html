@@ -48,10 +48,9 @@
         import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 
         console.log(THREE)
-        let sources = ['./textures/compressed360Stereo/example.ktx2',
-            './textures/compressedStereoCubeMaps/cubemapLeft.ktx2',
-            './textures/compressedStereoCubeMaps/cubemapRight.ktx2'
-
+        let sources = ['./textures/red.ktx2',
+            './textures/blue.ktx2',
+            './textures/cubemap_uastc.ktx2'
 
 
         ] //   './textures/compressed360Stereo/example.ktx2', './textures/compressed360Stereo/bf4nomip.ktx2',
@@ -61,6 +60,8 @@
         let camera, scene, renderer;
         let stereoCube = true;
         let box = null;
+        let data_red = null;
+        let data_blue = null;
 
         let equirectLayer = null;
         let cubeLayer = null;
@@ -80,7 +81,9 @@
 
 
 
-
+    let cubeImageElement = null;
+    let cubeIsStereo = false;
+    let cubeFaceSize = 0;
         // let compressedImageData = {
         //     "height": 512,
         //     "width": 512,
@@ -110,7 +113,7 @@
         ]);
 
 
-
+        let blue = false
 
         function createEquireLayer(height = active_360_Texture_Data.height, width = active_360_Texture_Data.width, radius = eqrtRadius, colorFormat = active_360_Texture_Data.format) {
 
@@ -122,8 +125,8 @@
             let _equirectLayer = glBinding.createEquirectLayer({
                 space: xrSpace,
                 viewPixelWidth: width,
-                viewPixelHeight: height / (eqrtIsStereo ? 2 : 1),
-                layout: eqrtIsStereo ? "stereo-top-bottom" : "mono",
+                viewPixelHeight: height, // (eqrtIsStereo ? 2 : 1),
+                layout: "stereo",//'stereo',//eqrtIsStereo ? "stereo-top-bottom" : "mono",
                 colorFormat: eval(colorFormat),
                 isStatic: "true",
 
@@ -166,7 +169,18 @@
             stereoCube = true;
 
         }
-        window.ms = makeCubeStereoCube
+
+
+        function makeSphereStereo(data1 = compressed_360_Texture_Data_Array[0], data2 = compressed_360_Texture_Data_Array[1]) {
+            data_red = data1.data
+            data_blue = data2.data
+            console.log("red: ", data_red)
+            console.log("blue: ", data_blue)
+
+            // stereoCube = true;
+
+        }
+        window.ms = makeSphereStereo
 
 
         function destroylayer() {
@@ -207,25 +221,63 @@
 
         window.createEquireLayer = createEquireLayer
 
+        function getCubeTextureSize(imageElement) {
+            const glLimit = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
+            const texSourceWidth = imageElement.width;
+            const texSourceHeight = imageElement.height;
+            return Math.min(glLimit, Math.min(texSourceWidth, texSourceHeight));
+        }
+
+
+        function createCubeLayer() {
 
 
 
-        function createCubeLayer(cubeData = active_Cube_Texture_Data) {
-            cubeLayer = glBinding.createCubeLayer({
-                space: xrSpace,
-                viewPixelWidth: cubeData.faceSize,
-                viewPixelHeight: cubeData.faceSize,
-                layout: "stereo" ,
-                colorFormat: eval(cubeData.format),
-                isStatic: false,
-
-            });
-            xrSession.updateRenderState({
-                layers: [
-                    cubeLayer,
+            let imageElement = document.createElement('img');
+            imageElement.src = './textures/compressedStereoCubeMaps/stereo3.png';
+            imageElement.onload = function () {
+                imageElement = flipImage(imageElement);
+                cubeFaceSize = getCubeTextureSize(imageElement);
+                cubeImageElement = imageElement;
+                cubeLayer = glBinding.createCubeLayer({
+                    space: xrSpace,
+                    viewPixelWidth: cubeFaceSize,
+                    viewPixelHeight: cubeFaceSize,
+                    layout: "stereo" ,
+                    isStatic: true
+                });
+                xrSession.updateRenderState({ layers: [cubeLayer, 
                     xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-                ]
-            });
+                ] });
+            }
+
+
+
+
+
+
+            // let _cubeLayer = glBinding.createCubeLayer({
+            //     space: xrSpace,
+            //     viewPixelWidth: cubeData.faceSize,
+            //     viewPixelHeight: cubeData.faceSize,
+            //     layout: "stereo",
+            //     colorFormat: eval(cubeData.format),
+            //     isStatic: true,
+
+            // });
+
+            // if (cubeLayer) {
+            //     console.log('destroying')
+            //     cubeLayer.destroy()
+
+            // }
+            // cubeLayer = _cubeLayer
+            // xrSession.updateRenderState({
+            //     layers: [
+            //         cubeLayer,
+            //         xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+            //     ]
+            // });
         }
 
 
@@ -253,7 +305,15 @@
 
 
 
-
+        function flipImage(inputImage) {
+      const outputImage = document.createElement("canvas");
+      outputImage.width = inputImage.naturalWidth;
+      outputImage.height = inputImage.naturalHeight;
+      const ctx = outputImage.getContext("2d");
+      ctx.scale(-1, 1);
+      ctx.drawImage(inputImage, -outputImage.width, 0);
+      return outputImage;
+    }
         //core
 
         init();
@@ -489,8 +549,15 @@
             gl = renderer.getContext();
             window.gl = gl
 
-            if (first) {
+            if (first && session) {
                 // ext = gl.getExtension("WEBGL_compressed_texture_etc")
+                xrSession.updateRenderState({
+                    layers: [
+                        xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+                    ]
+                });
+                
+                createCubeLayer()
 
                 estcEXT = gl.getExtension("WEBGL_compressed_texture_etc")
                 ext = gl.getExtension("WEBGL_compressed_texture_astc")
@@ -536,87 +603,48 @@
 
 
             if (session && equirectLayer && equirectLayer.needsRedraw) {
-                let glayer = glBinding.getSubImage(equirectLayer, frame);
+
+                // if (blue) {
+                let glayer = glBinding.getSubImage(equirectLayer, frame, "left");
                 gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
                 gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), active_360_Texture_Data.data);
+                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), data_red);
                 gl.bindTexture(gl.TEXTURE_2D, null);
+
+
+                let blayer = glBinding.getSubImage(equirectLayer, frame, "right");
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                gl.bindTexture(gl.TEXTURE_2D, blayer.colorTexture);
+                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), data_blue);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+
+                // } else {
+                //     let blayer = glBinding.getSubImage(equirectLayer, frame, "right");
+                //     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                //     gl.bindTexture(gl.TEXTURE_2D, blayer.colorTexture);
+                //     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), data_blue);
+                //     gl.bindTexture(gl.TEXTURE_2D, null);
+                // }
+
+
+
+
+
             }
 
-            let offset = 0
-            if (session && cubeLayer && cubeLayer.needsRedraw && active_Cube_Texture_Data) {
-                if (!stereoCube) {
-
-                    console.log("shouldn't be firing")
-                    let glayer = glBinding.getSubImage(cubeLayer, frame);
-                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
-
-                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0]); //es
-                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[1]); //es
-                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[2]); //es
-                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[3]); //es
-                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[4]); //es
-                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[5]); //es
-
-                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-
-
-                } else {
-                    for (let eye of ["right", "left"]) {
-
-                        let glayer = glBinding.getSubImage(cubeLayer, frame, eye);
-
-                        doshit(glayer.colorTexture, offset)
-                        offset++;
-
-                        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                        // gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
-                        // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
-                        // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
-                        // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
-                        // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
-                        // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
-                        // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
-
-                        // gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-                       
-                    }
-
-                    // let glayer = glBinding.getSubImage(cubeLayer, frame, "right");
-                    // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                    // gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
-
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[2]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[3]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[4]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[5]); //es
-
-                    // gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-
-
-                    // glayer = glBinding.getSubImage(cubeLayer, frame, "left");
-                    // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                    // gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
-
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[1]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[1]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[1]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[1]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[1]); //es
-                    // gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[1]); //es
-
-                    // gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+            if (session && cubeLayer && cubeLayer.needsRedraw) {
 
 
 
-
-
+                let offset = 0;
+                for (let eye of ["right", "left"]) {
+                    let glayer = glBinding.getSubImage(cubeLayer, frame, eye);
+                    copyCubestripToGLBuffer(glayer.colorTexture, cubeImageElement, offset * 6);
+                    ++offset;
                 }
 
 
+                console.log('continuing')
 
             }
 
@@ -648,6 +676,62 @@
             gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
         }
 
+
+
+        function copyCubestripToGLBuffer(tex, sourceImageElement, offset_in_faces) {
+
+            // the input texture cube face size.
+            const textureSourceCubeFaceSize = Math.min(sourceImageElement.width, sourceImageElement.height);
+
+            // dont flip the pixels as we load them into the texture buffer.
+            // TEXTURE_CUBE_MAP expects the Y to be flipped for the faces and it already
+            // is flipped in our texture image.
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, tex);
+
+            let cubefaceTextures = [];
+
+            for (let i = 0; i < 6; i++) {
+                let tempCanvas = document.createElement("canvas");
+                tempCanvas.width = tempCanvas.height = cubeFaceSize;
+                const tempCanvasContext = tempCanvas.getContext('2d');
+                // Note that this call to drawImage will not only copy the bytes to the
+                // canvas but also could resized the image if our cube face size is
+                // smaller than the source image due to GL max texture size.
+                tempCanvasContext.drawImage(
+                    sourceImageElement,
+                    (i + offset_in_faces) * textureSourceCubeFaceSize, // top left x coord in source
+                    0, // top left y coord in source
+                    textureSourceCubeFaceSize, // x pixel count from source
+                    textureSourceCubeFaceSize, // y pixel count from source
+                    0, // dest x offset in the canvas
+                    0, // dest y offset in the canvas
+                    cubeFaceSize, // x pixel count in dest
+                    cubeFaceSize, // y pixel count in dest
+                );
+                cubefaceTextures.push(tempCanvas);
+            }
+
+            let errorCode = 0;
+            cubefaceTextures.forEach((canvas, i) => {
+                gl.texSubImage2D(
+                    gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                    0,
+                    0, 0,
+                    gl.RGBA,
+                    gl.UNSIGNED_BYTE,
+                    canvas,
+                );
+                errorCode = gl.getError();
+            });
+
+            if (errorCode !== 0) {
+                console.log("renderingError, WebGL Error Code: " + errorCode);
+            }
+
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+            console.log("finished ", offset_in_faces)
+        }
 
 
     </script>
