@@ -65,6 +65,7 @@
 
 
         let ext = null
+        let estcEXT = null
         let ktx2Loader
         let ktx2Textures = []
         let compressedIMGS = {}
@@ -74,8 +75,8 @@
         let active_Cube_Texture_Data = null;
 
         const supportedCompressedFormats = new Map([
-            [37496, "ETC2_EXT.COMPRESSED_RGBA8_ETC2_EAC"],
-            [37492, "ETC2_EXT.COMPRESSED_RGB8_ETC2"],
+            [37496, "estcEXT.COMPRESSED_RGBA8_ETC2_EAC"],
+            [37492, "estcEXT.COMPRESSED_RGB8_ETC2"],
             [37808, "ext.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"],
             [1023, "srgb"]
 
@@ -194,7 +195,7 @@
                 space: xrSpace,
                 viewPixelWidth: cubeData.faceSize,
                 viewPixelHeight: cubeData.faceSize,
-                layout: "stereo",
+                layout: "mono",
                 colorFormat: eval(cubeData.format),
                 isStatic: false,
 
@@ -250,15 +251,16 @@
 
 
                     if (texture.isCompressedCubeTexture) {
-                        console.log("something went right??")
+                        console.log("something went right??", texture.source.data[0].width)
 
                         let cubeCompressedTexture = {
-                            faceSize: tex.source.data[0].width,
-                            data: [tex.source.data[0].mipmaps[0].data, tex.source.data[1].mipmaps[0].data, tex.source.data[2].mipmaps[0].data,
-                            tex.source.data[3].mipmaps[0].data, tex.source.data[4].mipmaps[0].data, tex.source.data[5].mipmaps[0].data],
+                            faceSize: texture.source.data[0].width,
+                            data: [texture.source.data[0].mipmaps[0].data, texture.source.data[1].mipmaps[0].data, texture.source.data[2].mipmaps[0].data,
+                            texture.source.data[3].mipmaps[0].data, texture.source.data[4].mipmaps[0].data, texture.source.data[5].mipmaps[0].data],
                             format: texture.format,
 
                         }
+                      
                         compressed_Cube_Texture_Data_Array.push(cubeCompressedTexture)
 
 
@@ -308,7 +310,7 @@
             if (first) {
 
                 ext = gl.getExtension("WEBGL_compressed_texture_astc")
-
+                estcEXT = gl.getExtension("WEBGL_compressed_texture_etc")
 
                 if (ext) {
                     console.log("supports WEBGL_compressed_texture_etc")
@@ -318,10 +320,11 @@
 
 
                 createKTX2Loader()
-                loadImages()
+                // loadImages()
                 first = false;
 
             }
+            window.loadImages = loadImages
 
 
 
