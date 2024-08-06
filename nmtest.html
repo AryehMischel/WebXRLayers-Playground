@@ -457,12 +457,12 @@
                 session.requestReferenceSpace('local-floor').then((refSpace) => {
 
                     glBinding = xr.getBinding();
+                    // window.glBinding = glBinding;
 
-                    window.mediaBinding = mediaBinding;
+                    // window.mediaBinding = mediaBinding;
                     xrSpace = refSpace;
 
-                    mediaBinding = new XRMediaBinding(session);
-                    window.glBinding = glBinding;
+                    // mediaBinding = new XRMediaBinding(session);
                     createEquirectLayerByIndex(0)
 
 

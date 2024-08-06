@@ -150,11 +150,11 @@ class KTX2Loader extends Loader {
 			};
 
 		} else {
-			console.log("this pal")
+			//this is for webgl...
 			this.workerConfig = {
-				astcSupported:  renderer.extensions.has( 'WEBGL_compressed_texture_astc' ), //false,
-				etc1Supported:  renderer.extensions.has( 'WEBGL_compressed_texture_etc1' ), //false
-				etc2Supported: renderer.extensions.has( 'WEBGL_compressed_texture_etc' ), // false,
+				astcSupported:  renderer.extensions.has( 'WEBGL_compressed_texture_astc' ), 
+				etc1Supported:  renderer.extensions.has( 'WEBGL_compressed_texture_etc1' ), 
+				etc2Supported: renderer.extensions.has( 'WEBGL_compressed_texture_etc' ),
 				dxtSupported: false,//renderer.extensions.has( 'WEBGL_compressed_texture_s3tc' )
 				bptcSupported: false, //renderer.extensions.has( 'EXT_texture_compression_bptc' )
 				pvrtcSupported: false//renderer.extensions.has( 'WEBGL_compressed_texture_pvrtc' || renderer.extensions.has( 'WEBKIT_WEBGL_compressed_texture_pvrtc' )
@@ -306,7 +306,7 @@ class KTX2Loader extends Loader {
 		
 		texture.colorSpace = parseColorSpace( container );
 	
-		console.log(texture.colorSpace)
+		console.log("color space: ", texture.colorSpace)
 		texture.premultiplyAlpha = !! ( dfdFlags & KHR_DF_FLAG_ALPHA_PREMULTIPLIED );
 
 		return texture;
