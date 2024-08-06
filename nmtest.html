@@ -36,7 +36,7 @@
 			  }
 			}
     </script>
-
+    W
     <script defer type="module">
         import * as THREE from 'three';
         import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
@@ -48,9 +48,8 @@
         import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+
         let sources = ['./textures/compressed360Stereo/example.ktx2']
-
-
 
         let camera, controls, scene, renderer;
 
@@ -69,12 +68,13 @@
         let ext = null
         let ktx2Loader
         let ktx2Textures = []
+        let active_360_Texture;
         let compressedIMGS = {}
 
         let compressed_360_Texture_Data_Array = [];
         let compressed_360_Texture_Data = new Map()
         let active_360_Texture_Data = null;
-
+        let group
 
         const supportedCompressedFormats = new Map([
             [37496, "ETC2_EXT.COMPRESSED_RGBA8_ETC2_EAC"],
@@ -84,33 +84,28 @@
 
         ]);
 
-        function disableLayer() {
-            xrSession.updateRenderState({
-                layers: [
-                    xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-                ]
-            });
-        }
 
-        window.disableLayer = disableLayer
 
         init();
 
         function init() {
+            setupScene();
+            setupControls();
+            // setupXREventListeners();
+            setupControllers();
+            createHTMLButton();
+        }
 
+
+
+        function setupScene() {
             scene = new THREE.Scene();
-            // camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
-            // camera.position.set(0, 1.6, 3);
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
             camera.position.set(400, 200, 0);
-            // THREE.ColorManagement.enabled = true;
-            // scene.background = new THREE.Color( 0xcccccc );
-            // scene.fog = new THREE.FogExp2( 0xcccccc, 0.002 );
             const hemLight = new THREE.HemisphereLight(0x808080, 0x606060, 3);
             const light = new THREE.DirectionalLight(0xffffff, 3);
-
             scene.add(hemLight, light);
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+
             let geometry = new THREE.ConeGeometry(10, 30, 4, 1);
             let material = new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true });
 
@@ -137,6 +132,7 @@
             scene.add(ambientLight);
 
 
+            renderer = new THREE.WebGLRenderer({ antialias: true });
             renderer.setPixelRatio(window.devicePixelRatio);
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setAnimationLoop(animate);
@@ -144,33 +140,37 @@
             renderer.setClearColor(new THREE.Color(0), 0);
             renderer.xr.enabled = true;
 
+            document.body.appendChild(renderer.domElement);
+            document.body.appendChild(VRButton.createButton(renderer));
 
-        controls = new OrbitControls(camera, renderer.domElement);
-        controls.listenToKeyEvents(window); // optional
+        }
 
-        controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-        controls.dampingFactor = 0.05;
 
-        controls.screenSpacePanning = false;
+        function setupControls() {
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.listenToKeyEvents(window); // optional
 
-        controls.minDistance = 100;
-        controls.maxDistance = 500;
+            controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+            controls.dampingFactor = 0.05;
 
-        controls.maxPolarAngle = Math.PI / 2;
+            controls.screenSpacePanning = false;
 
-        controls.keys = {
-       LEFT: 'KeyA',  // Use 'A' key to rotate left
-       UP: 'KeyW',    // Use 'W' key to rotate up
-       RIGHT: 'KeyD', // Use 'D' key to rotate right
-       BOTTOM: 'KeyS' // Use 'S' key to rotate down
-   };
-        // controls.update();
-            // controls.keys = {
-            //     LEFT: 'a', //left arrow
-            //     UP: 'w', // up arrow
-            //     RIGHT: 'd', // right arrow
-            //     BOTTOM: 's' // down arrow
-            // }
+            controls.minDistance = 100;
+            controls.maxDistance = 500;
+
+            controls.maxPolarAngle = Math.PI / 2;
+
+            controls.keys = {
+                LEFT: 'KeyA',  // Use 'A' key to rotate left
+                UP: 'KeyW',    // Use 'W' key to rotate up
+                RIGHT: 'KeyD', // Use 'D' key to rotate right
+                BOTTOM: 'KeyS' // Use 'S' key to rotate down
+            };
+        }
+
+        function setupXREventListeners() {
+
+            window.addEventListener('resize', onWindowResize, false);
 
             renderer.xr.addEventListener('sessionstart', () => {
                 // createEquirectLayerByIndex(0)
@@ -183,11 +183,13 @@
                 console.log('session ended')
             })
 
-            document.body.appendChild(renderer.domElement);
-            document.body.appendChild(VRButton.createButton(renderer));
 
+        }
 
-            // controllers
+        function setupControllers() {
+            const controllerModelFactory = new XRControllerModelFactory();
+            const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
+
             const lineGeometry = new THREE.BufferGeometry().setFromPoints([
                 new THREE.Vector3(0, 0, 0),
                 new THREE.Vector3(0, 0, - 10)
@@ -195,16 +197,8 @@
 
 
             const line = new THREE.Line(lineGeometry, new THREE.LineBasicMaterial({ color: 0x5555ff }));
-
-
-            // The invisible dummyMesh quads and the guiMesh need to be rendered before the controller lines so that they
-            // leave a hole in the depth buffer that the lines can intersect.
             line.renderOrder = 1;
 
-            const controllerModelFactory = new XRControllerModelFactory();
-            const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
-
-            //
 
             const controllers = [
                 renderer.xr.getController(0),
@@ -225,13 +219,13 @@
 
             });
 
-            const group = new InteractiveGroup();
+            group = new InteractiveGroup();
             group.listenToXRControllerEvents(controllers[0]);
             group.listenToXRControllerEvents(controllers[1]);
             scene.add(group);
+        }
 
-
-            // Create the HTML button
+        function createHTMLButton() {
             const button = document.createElement('button');
             button.innerText = 'Click Me';
             button.style.position = 'absolute';
@@ -241,7 +235,6 @@
             button.style.zIndex = 1;
             document.body.appendChild(button);
 
-            // Create an HTMLMesh to attach the button to the plane
             const mesh = new HTMLMesh(button);
             mesh.position.x = - 0.75;
             mesh.position.y = 1.5;
@@ -249,25 +242,23 @@
             mesh.rotation.y = Math.PI / 4;
             mesh.scale.setScalar(2);
 
-
-
-            // Handle button click
             button.addEventListener('click', () => {
                 createEquirectLayerByIndex(0)
             });
 
-
             group.add(mesh);
-
-
-
-            window.addEventListener('resize', onWindowResize, false);
-
-
         }
 
 
-        function createEquireLayer(height = active_360_Texture_Data.height, width = active_360_Texture_Data.width, radius = eqrtRadius, colorFormat = active_360_Texture_Data.format) {
+        // console.log(ktx2Textures[0].mipmaps[0].height, "height")
+        //     console.log(ktx2Textures[0].mipmaps[0].width, "width")
+        //     console.log(ktx2Textures[0].mipmaps[0].data, "data")
+        //     console.log(supportedCompressedFormats.get(ktx2Textures[0].format), "format")
+
+        function createEquireLayer(height = active_360_Texture.mipmaps[0].height,
+                                   width = active_360_Texture.mipmaps[0].width,
+                                   radius = eqrtRadius, 
+                                   colorFormat = supportedCompressedFormats.get(active_360_Texture.format)) {
 
 
 
@@ -309,7 +300,6 @@
 
 
         function createEquirectLayerByIndex(index) {
-            active_360_Texture_Data = compressed_360_Texture_Data_Array[index]
             createEquireLayer()
 
         }
@@ -323,6 +313,14 @@
 
             }
 
+        }
+
+        function disableLayer() {
+            xrSession.updateRenderState({
+                layers: [
+                    xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+                ]
+            });
         }
 
 
@@ -362,7 +360,7 @@
                 (texture) => {
 
                     console.log("jgfhgfgjh", texture)
-
+                   
 
                     if (texture.isCompressedCubeTexture) {
 
@@ -375,21 +373,31 @@
 
                         console.log("creating equirectangular texture")
 
-                        let equireCompressedTexture = {
-                            "height": texture.mipmaps[0].height,
-                            "width": texture.mipmaps[0].width,
-                            "data": texture.mipmaps[0].data,
-                            "format": supportedCompressedFormats.get(texture.format),
+                        // let equireCompressedTexture = {
+                        //     "height": texture.mipmaps[0].height,
+                        //     "width": texture.mipmaps[0].width,
+                        //     "data": texture.mipmaps[0].data,
+                        //     "format": supportedCompressedFormats.get(texture.format),
 
-                        }
-
-                        compressed_360_Texture_Data_Array.push(equireCompressedTexture)
+                        // }
+                        ktx2Textures.push(texture)
+                        active_360_Texture =  ktx2Textures[0]
+                        // compressed_360_Texture_Data_Array.push(equireCompressedTexture)
 
 
                     }
 
                 }, null, null);
         }
+
+        function getData(){
+            console.log(ktx2Textures[0].mipmaps[0].height, "height")
+            console.log(ktx2Textures[0].mipmaps[0].width, "width")
+            console.log(ktx2Textures[0].mipmaps[0].data, "data")
+            console.log(supportedCompressedFormats.get(ktx2Textures[0].format), "format")
+        }
+
+        window.getData = getData
 
 
 
@@ -462,7 +470,10 @@
 
             }
 
-
+            // console.log(active_360_Texture.mipmaps[0].height, "height")
+            // console.log(ktx2Textures[0].mipmaps[0].width, "width")
+            // console.log(ktx2Textures[0].mipmaps[0].data, "data")
+            // console.log(supportedCompressedFormats.get(ktx2Textures[0].format), "format")
 
 
             if (session && equirectLayer && equirectLayer.needsRedraw) {
@@ -470,7 +481,7 @@
                 let glayer = glBinding.getSubImage(equirectLayer, frame);
                 gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
                 gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), active_360_Texture_Data.data);
+                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture.mipmaps[0].width, active_360_Texture.mipmaps[0].height, eval(supportedCompressedFormats.get(active_360_Texture.format)), active_360_Texture.mipmaps[0].data);
                 gl.bindTexture(gl.TEXTURE_2D, null);
 
             }

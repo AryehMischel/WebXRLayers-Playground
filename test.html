@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js vr - layers</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+</head>
+
+<body>
+
+    <div id="info">
+        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+        <br />
+        <p> ⭐ Experimenting to see if we can use gpu compressed texture for our webxr layers. </p>
+        <p> 😿 This is hurting my noob brain</p>
+        <p> 🥅 Goal create two webxr quad layers.</p>
+        <p> * One with an rgb data source </p>
+        <p> * The other whose source will be a gpu compressed texture</p>
+        <br />
+    </div>
+
+    <script src="./encoder/build/basis_loader.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./three.js-master/three.js-master/build/three.module.js",
+                "three/addons/": "./three.js-master/three.js-master/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { HTMLMesh } from 'three/addons/interactive/HTMLMesh.js';
+        import { InteractiveGroup } from 'three/addons/interactive/InteractiveGroup.js';
+        import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+        import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
+        import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+        import { customControls, customSkyCamera, setupScene, customRenderer, customControllers } from './main.js';
+
+
+        let scene, camera, renderer, controls, controllers, group, ktx2Loader, gl;
+
+       
+        //resize event
+        window.addEventListener('resize', onWindowResize, false);
+
+        //create scene, add lights and random geometry
+        scene = new THREE.Scene();
+        setupScene(scene)
+
+        //create camera
+        camera = new customSkyCamera().camera;
+
+        //create renderer, add it to the dom and set animation loop
+        renderer = new customRenderer().renderer;
+        document.body.appendChild(renderer.domElement);
+        renderer.setAnimationLoop(animate);
+
+        //add vr button
+        document.body.appendChild(VRButton.createButton(renderer));
+
+        //add pc controls ('awsd' to move, mouse to look around)
+        controls = new customControls(camera, renderer).controls;
+
+        //create vr hand controls with models
+        controllers = new customControllers(scene, renderer).controllers;
+
+        //create interactive group
+        group = new InteractiveGroup();
+        group.listenToXRControllerEvents(controllers[0]);
+        group.listenToXRControllerEvents(controllers[1]);
+        scene.add(group);
+
+        //create ktx2 loader ?maybe should be a function?
+        ktx2Loader = new KTX2Loader();
+        ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
+        ktx2Loader.detectSupport(renderer);
+
+        //webgl context
+        gl = renderer.getContext();
+        console.log(gl)
+
+        //get compressed texture extensions
+        let astc_ext = gl.getExtension("WEBGL_compressed_texture_astc")
+        let etc_ext =  gl.getExtension("WEBGL_compressed_texture_etc")
+       
+        if(astc_ext) console.log("astc_ext", astc_ext)
+        if(etc_ext) console.log("etc_ext", etc_ext)
+
+       
+        //supported compressed formats
+        const supportedCompressedFormats = new Map([
+            [37496, "etc_ext.COMPRESSED_RGBA8_ETC2_EAC"],
+            [37492, "etc_ext.COMPRESSED_RGB8_ETC2"],
+            [37808, "astc_ext.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"],
+            [1023, "srgb"]
+
+        ]);
+
+   
+        //animation loop
+        function animate() {
+            renderer.render(scene, camera);
+            controls.update();
+
+        }
+
+
+
+
+
+
+
+        //utils
+
+        function onWindowResize() {
+            console.log('resize')
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        }
+
+    </script>
+
+</body>
+
+</html>
