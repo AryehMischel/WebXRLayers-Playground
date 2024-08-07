@@ -215,8 +215,8 @@ export class WebXREquirectangularLayer {
         this.equirectangularLayer = this.glBinding.createEquirectLayer({
             space: this.xrSpace,
             viewPixelWidth: texture.mipmaps[0].width,
-            viewPixelHeight: texture.mipmaps[0].height,
-            layout: this.stereo ? "stereo" : "mono",
+            viewPixelHeight: texture.mipmaps[0].height / (this.stereo ? 2 : 1),
+            layout: this.stereo ? "stereo-top-bottom" : "mono",
             colorFormat: this.format,
             isStatic: "true",
     

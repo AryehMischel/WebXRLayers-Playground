@@ -101,7 +101,7 @@
         // ]
 
         let sources = [
-            './textures/compressed360/bf4.ktx2'
+            './textures/compressed360Stereo/bf4.ktx2'
           
         ]
         //get compressed texture extensions
@@ -321,27 +321,30 @@
                 let width = active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].width;
                 let height = active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].height;
 
-                if (!active_WebXR_Layer.stereo) {
-                    let glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame);
+                let glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame);
                     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
                     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
                     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].data);
                     gl.bindTexture(gl.TEXTURE_2D, null);
+                
+                    if (!active_WebXR_Layer.stereo) {
+                  
 
-                } else {
-                    let glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame, "left");
-                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-                    gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].data);
-                    gl.bindTexture(gl.TEXTURE_2D, null);
+                } 
+                // else {
+                //     let glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame, "left");
+                //     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                //     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                //     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].data);
+                //     gl.bindTexture(gl.TEXTURE_2D, null);
 
-                    glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame, "right");
-                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-                    gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].data);
-                    gl.bindTexture(gl.TEXTURE_2D, null);
+                //     glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame, "right");
+                //     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                //     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                //     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].data);
+                //     gl.bindTexture(gl.TEXTURE_2D, null);
 
-                }
+                // }
 
 
 
