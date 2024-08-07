@@ -260,6 +260,7 @@ class KTX2Loader extends Loader {
 				return cachedTask.promise.then( onLoad ).catch( onError );
 
 			}
+			console.log(buffer)
 
 			this._createTexture( buffer )
 				.then( ( texture ) => onLoad ? onLoad( texture ) : null )

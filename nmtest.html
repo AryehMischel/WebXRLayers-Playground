@@ -11,313 +11,244 @@
 
     <div id="info">
         <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
-
         <br />
-
         <p> ⭐ Experimenting to see if we can use gpu compressed texture for our webxr layers. </p>
         <p> 😿 This is hurting my noob brain</p>
         <p> 🥅 Goal create two webxr quad layers.</p>
         <p> * One with an rgb data source </p>
         <p> * The other whose source will be a gpu compressed texture</p>
-
-
-
         <br />
-
     </div>
 
     <script src="./encoder/build/basis_loader.js"></script>
 
     <script type="importmap">
-			{
-			  "imports": {
-				"three": "./three.js-master/three.js-master/build/three.module.js",
-				"three/addons/": "./three.js-master/three.js-master/examples/jsm/"
-			  }
-			}
+        {
+            "imports": {
+                "three": "./three.js-master/three.js-master/build/three.module.js",
+                "three/addons/": "./three.js-master/three.js-master/examples/jsm/"
+            }
+        }
     </script>
-    W
-    <script defer type="module">
+
+    <script type="module">
         import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
         import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
         import { HTMLMesh } from 'three/addons/interactive/HTMLMesh.js';
         import { InteractiveGroup } from 'three/addons/interactive/InteractiveGroup.js';
-        import { VRButton } from 'three/addons/webxr/VRButton.js';
         import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
         import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
         import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { customControls, customSkyCamera, setupScene, customRenderer, customControllers, WebXRCubeLayer, WebXREquirectangularLayer } from './main.js';
 
 
-        let sources = ['./textures/compressed360Stereo/example.ktx2']
+        let scene, camera, renderer, controls, controllers, group, ktx2Loader, gl, glBinding, xrSpace, xrSession;
 
-        let camera, controls, scene, renderer;
-
-        let equirectLayer = null;
-        let projLayer = null;
+        //Our webxr layers
+        let equirectLayer, cubeLayer = null;
         let eqrtRadius = 40;
+        let stereo = false
+        //resize event
+        window.addEventListener('resize', onWindowResize, false);
 
-        let gl;
-        let glBinding;
-        let mediaBinding;
+        //create scene, add lights and random geometry
+        scene = new THREE.Scene();
+        setupScene(scene)
 
-        let xrSpace;
-        let xrSession = null;
+        //create camera
+        camera = new customSkyCamera().camera;
+
+        //create renderer, add it to the dom and set animation loop
+        renderer = new customRenderer().renderer;
+        document.body.appendChild(renderer.domElement);
+        renderer.setAnimationLoop(animate);
+
+        //add vr button
+        document.body.appendChild(VRButton.createButton(renderer));
+
+        //add pc controls ('awsd' to move, mouse to look around)
+        controls = new customControls(camera, renderer).controls;
+
+        //create vr hand controls with models
+        controllers = new customControllers(scene, renderer).controllers;
+
+        //create interactive group
+        group = new InteractiveGroup();
+        group.listenToXRControllerEvents(controllers[0]);
+        group.listenToXRControllerEvents(controllers[1]);
+        scene.add(group);
+
+        //webgl context
+        gl = renderer.getContext();
+        console.log(gl)
+
+        //create ktx2 loader ?maybe should be a function?
+        ktx2Loader = new KTX2Loader();
+        ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
+        ktx2Loader.detectSupport(renderer);
+
+        //our sources
+        // let sources = ['./textures/compressedCubeMaps/cubemapLeft.ktx2', './textures/compressedCubeMaps/cubemapRight.ktx2', './textures/compressedCubeMaps/cubemap_uastc.ktx2', './textures/compressed360Stereo/example.ktx2'] //'./textures/compressed360Stereo/example.ktx2'  
+
+        // let sources = ['./textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2',
+        //     './textures/compressed360/bf4.ktx2',
+        //     './textures/compressed360/Italy_Mountains.ktx2',
+        //     './textures/compressed360/SnowySnow360.ktx2',
+        //     './textures/compressed360/Mountain.ktx2'
+
+        // ]
+
+        let sources = [
+            './textures/compressed360/bf4.ktx2'
+          
+        ]
+        //get compressed texture extensions
+        let astc_ext = gl.getExtension("WEBGL_compressed_texture_astc")
+        let etc_ext = gl.getExtension("WEBGL_compressed_texture_etc")
+
+        if (astc_ext) console.log("astc_ext", astc_ext)
+        if (etc_ext) console.log("etc_ext", etc_ext)
+
+        //Our three js compressed textures
+        let compressed360Textures = []
+        let active_360_Texture = null
+        let active_Cube_Texture = null
+        let active_Cube_Texture_Right = null
+
+        let active_WebXR_Layer = null;
+
+        // let compressed360StereoTextures = []
+        let compressedCubeTextures = []
+
+        window.compressed360Textures = compressed360Textures
+        // let compressedCubeStereoTextures = []
 
 
-        let ext = null
-        let ktx2Loader
-        let ktx2Textures = []
-        let active_360_Texture;
-        let compressedIMGS = {}
 
-        let compressed_360_Texture_Data_Array = [];
-        let compressed_360_Texture_Data = new Map()
-        let active_360_Texture_Data = null;
-        let group
-
+        //supported compressed formats
         const supportedCompressedFormats = new Map([
-            [37496, "ETC2_EXT.COMPRESSED_RGBA8_ETC2_EAC"],
-            [37492, "ETC2_EXT.COMPRESSED_RGB8_ETC2"],
-            [37808, "ext.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"],
+            [37496, "etc_ext.COMPRESSED_RGBA8_ETC2_EAC"],
+            [37492, "etc_ext.COMPRESSED_RGB8_ETC2"],
+            [37808, "astc_ext.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"],
             [1023, "srgb"]
 
         ]);
 
 
+        //better design is creating key value pairs mapping the texture src image name to the texture object
+        //storing all the textures in a single object
+        for (let i = 0; i < sources.length; i++) {
+            getTexturedData(sources[i])
+        }
+        // getTexturedData();
 
-        init();
+        //create a compressed texture
+        //this will be completely refactored, just testing handling different compressed formats
+        function getTexturedData(url = sources[0]) {
 
-        function init() {
-            setupScene();
-            setupControls();
-            // setupXREventListeners();
-            setupControllers();
-            createHTMLButton();
+            ktx2Loader.load(url,
+                (texture) => {
+
+                    if (texture.isCompressedCubeTexture) {
+                        console.log("creating cube texture")
+                        compressedCubeTextures.push(texture)
+
+                    } else if (texture.isCompressedTexture) {
+
+                        console.log("creating equirectangular texture")
+                        compressed360Textures.push(texture)
+                        //  active_360_Texture = compressed360Textures[0]
+
+                    }
+
+                }, null, null);
         }
 
+        function createEquireLayer(texture_left, texture_right, stereo = false) {
 
+            console.log(texture_left)
 
-        function setupScene() {
-            scene = new THREE.Scene();
-            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 1, 1000);
-            camera.position.set(400, 200, 0);
-            const hemLight = new THREE.HemisphereLight(0x808080, 0x606060, 3);
-            const light = new THREE.DirectionalLight(0xffffff, 3);
-            scene.add(hemLight, light);
+            let format = eval(supportedCompressedFormats.get(texture_left.format))
 
-            let geometry = new THREE.ConeGeometry(10, 30, 4, 1);
-            let material = new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true });
+            let sphere_layer
 
-            for (let i = 0; i < 500; i++) {
+            if (!stereo) {
+                sphere_layer = new WebXREquirectangularLayer(null, texture_left, null, false, xrSpace, glBinding, format, eqrtRadius);
 
-                const mesh = new THREE.Mesh(geometry, material);
-                mesh.position.x = Math.random() * 1600 - 800;
-                mesh.position.y = 0;
-                mesh.position.z = Math.random() * 1600 - 800;
-                mesh.updateMatrix();
-                mesh.matrixAutoUpdate = false;
-                scene.add(mesh);
+            } else {
+                sphere_layer = new WebXREquirectangularLayer(null, texture_left, texture_right, true, xrSpace, glBinding, format, eqrtRadius);
 
             }
-            const dirLight1 = new THREE.DirectionalLight(0xffffff, 3);
-            dirLight1.position.set(1, 1, 1);
-            scene.add(dirLight1);
+            sphere_layer.createLayer()
+            active_WebXR_Layer = sphere_layer
 
-            const dirLight2 = new THREE.DirectionalLight(0x002288, 3);
-            dirLight2.position.set(- 1, - 1, - 1);
-            scene.add(dirLight2);
-
-            const ambientLight = new THREE.AmbientLight(0x555555);
-            scene.add(ambientLight);
-
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setAnimationLoop(animate);
-            renderer.setClearAlpha(1);
-            renderer.setClearColor(new THREE.Color(0), 0);
-            renderer.xr.enabled = true;
-
-            document.body.appendChild(renderer.domElement);
-            document.body.appendChild(VRButton.createButton(renderer));
-
-        }
-
-
-        function setupControls() {
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.listenToKeyEvents(window); // optional
-
-            controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
-            controls.dampingFactor = 0.05;
-
-            controls.screenSpacePanning = false;
-
-            controls.minDistance = 100;
-            controls.maxDistance = 500;
-
-            controls.maxPolarAngle = Math.PI / 2;
-
-            controls.keys = {
-                LEFT: 'KeyA',  // Use 'A' key to rotate left
-                UP: 'KeyW',    // Use 'W' key to rotate up
-                RIGHT: 'KeyD', // Use 'D' key to rotate right
-                BOTTOM: 'KeyS' // Use 'S' key to rotate down
-            };
-        }
-
-        function setupXREventListeners() {
-
-            window.addEventListener('resize', onWindowResize, false);
-
-            renderer.xr.addEventListener('sessionstart', () => {
-                // createEquirectLayerByIndex(0)
-                console.log('session started')
-
-            })
-
-            renderer.xr.addEventListener('sessionend', () => {
-                //equirectLayer.destroy()
-                console.log('session ended')
-            })
-
-
-        }
-
-        function setupControllers() {
-            const controllerModelFactory = new XRControllerModelFactory();
-            const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
-
-            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-                new THREE.Vector3(0, 0, 0),
-                new THREE.Vector3(0, 0, - 10)
-            ]);
-
-
-            const line = new THREE.Line(lineGeometry, new THREE.LineBasicMaterial({ color: 0x5555ff }));
-            line.renderOrder = 1;
-
-
-            const controllers = [
-                renderer.xr.getController(0),
-                renderer.xr.getController(1)
-            ];
-
-            controllers.forEach((controller, i) => {
-
-                const controllerGrip = renderer.xr.getControllerGrip(i);
-                controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
-                scene.add(controllerGrip);
-
-                const hand = renderer.xr.getHand(i);
-                hand.add(handModelFactory.createHandModel(hand));
-
-                controller.add(line.clone());
-                scene.add(controller, controllerGrip, hand);
-
-            });
-
-            group = new InteractiveGroup();
-            group.listenToXRControllerEvents(controllers[0]);
-            group.listenToXRControllerEvents(controllers[1]);
-            scene.add(group);
-        }
-
-        function createHTMLButton() {
-            const button = document.createElement('button');
-            button.innerText = 'Click Me';
-            button.style.position = 'absolute';
-            button.style.left = '50%';
-            button.style.top = '50%';
-            button.style.transform = 'translate(-50%, -50%)';
-            button.style.zIndex = 1;
-            document.body.appendChild(button);
-
-            const mesh = new HTMLMesh(button);
-            mesh.position.x = - 0.75;
-            mesh.position.y = 1.5;
-            mesh.position.z = - 0.5;
-            mesh.rotation.y = Math.PI / 4;
-            mesh.scale.setScalar(2);
-
-            button.addEventListener('click', () => {
-                createEquirectLayerByIndex(0)
-            });
-
-            group.add(mesh);
-        }
-
-
-        // console.log(ktx2Textures[0].mipmaps[0].height, "height")
-        //     console.log(ktx2Textures[0].mipmaps[0].width, "width")
-        //     console.log(ktx2Textures[0].mipmaps[0].data, "data")
-        //     console.log(supportedCompressedFormats.get(ktx2Textures[0].format), "format")
-
-        function createEquireLayer(height = active_360_Texture.mipmaps[0].height,
-                                   width = active_360_Texture.mipmaps[0].width,
-                                   radius = eqrtRadius, 
-                                   colorFormat = supportedCompressedFormats.get(active_360_Texture.format)) {
-
-
-
-            let _equirectLayer = glBinding.createEquirectLayer({
-                space: xrSpace,
-                viewPixelWidth: width,
-                viewPixelHeight: height,
-                layout: "mono",
-                colorFormat: eval(colorFormat),
-                isStatic: "true",
-
-
-            });
-
-            _equirectLayer.centralHorizontalAngle = Math.PI * 2;
-            _equirectLayer.upperVerticalAngle = -Math.PI / 2.0;
-            _equirectLayer.lowerVerticalAngle = Math.PI / 2.0;
-            _equirectLayer.radius = radius;
-
-            if (equirectLayer) {
-                console.log('destroying')
-                equirectLayer.destroy()
-
-            }
-
-            equirectLayer = _equirectLayer
-
-            {
-                xrSession.updateRenderState({
-                    layers: [
-                        equirectLayer,
-                        xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-                    ]
-                });
-
-            }
-
-        }
-
-
-        function createEquirectLayerByIndex(index) {
-            createEquireLayer()
-
-        }
-
-
-        function destroylayer() {
-            if (equirectLayer) {
-                console.log('destroying')
-                equirectLayer.destroy()
-                equirectLayer = null
-
-            }
-
-        }
-
-        function disableLayer() {
             xrSession.updateRenderState({
                 layers: [
+                    active_WebXR_Layer.equirectangularLayer,
+                    xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+                ]
+            });
+
+
+        }
+
+        function createEqrtLayerByIndex(index) {
+
+            if (index >= compressed360Textures.length) {
+                console.log("index out of range");
+                return null;
+            }
+            createEquireLayer(compressed360Textures[index], null, false)
+
+        }
+
+        function createEqrtLayerByIndexStereo(index_left, index_right) {
+
+            if (index_left >= compressed360Textures.length || index_right >= compressed360Textures.length) {
+                console.log("index out of range");
+                console.log(compressed360Textures.length)
+                return null;
+            }
+
+            if (compressed360Textures[index_left].format !== compressed360Textures[index_right].format) {
+                console.log("formats do not match")
+                return null;
+            }
+
+            if(compressed360Textures[index_left].width !== compressed360Textures[index_right].width){
+                console.log("unequal width")
+                return null;
+
+            }
+
+
+            // active_Cube_Texture = compressedCubeTextures[index_left]
+            // active_Cube_Texture_Right = compressedCubeTextures[index_right]
+
+            createEquireLayer(compressed360Textures[index_left], compressed360Textures[index_right], true)  
+        }
+
+
+        function createCubeLayer(texture = active_Cube_Texture, texture_right = null, stereo = false) {
+
+            let format = eval(supportedCompressedFormats.get(texture.format))
+            let cube_layer
+
+            if (!stereo) {
+                cube_layer = new WebXRCubeLayer(null, texture, null, false, xrSpace, glBinding, format);
+            } else {
+                cube_layer = new WebXRCubeLayer(null, texture, texture_right, true, xrSpace, glBinding, format);
+            }
+
+
+            cube_layer.createLayer()
+            active_WebXR_Layer = cube_layer
+
+            xrSession.updateRenderState({
+                layers: [
+                    active_WebXR_Layer.cubeLayer,
                     xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
                 ]
             });
@@ -326,16 +257,165 @@
 
 
 
-        function loadImages(links = sources) {
-            for (let link in links) {
-                getTexturedData(links[link])
+
+        function createCubeLayerByIndex(index) {
+
+            if (index >= compressedCubeTextures.length) {
+                console.log("index out of range");
+                return null;
             }
+            active_Cube_Texture = compressedCubeTextures[index]
+            createCubeLayer()
+
+        }
+
+        function createCubeLayerByIndexStereo(index_left, index_right) {
+            if (index_left >= compressedCubeTextures.length || index_right >= compressedCubeTextures.length) {
+                console.log("index out of range");
+                console.log(compressedCubeTextures.length)
+                return null;
+            }
+
+            if (compressedCubeTextures[index_left].format !== compressedCubeTextures[index_right].format) {
+                console.log("formats do not match")
+                return null;
+            }
+
+            active_Cube_Texture = compressedCubeTextures[index_left]
+            active_Cube_Texture_Right = compressedCubeTextures[index_right]
+
+
+            createCubeLayer(active_Cube_Texture, active_Cube_Texture_Right, true)
+
+        }
+
+        window.createCubeLayerByIndex = createCubeLayerByIndex
+        window.createCubeLayerByIndexStereo = createCubeLayerByIndexStereo
+        window.createEqrtLayerByIndex = createEqrtLayerByIndex
+        window.createEqrtLayerByIndexStereo = createEqrtLayerByIndexStereo
+        //animation loop
+        function animate(t, frame) {
+
+            const xr = renderer.xr;
+            const session = xr.getSession();
+            xrSession = session;
+            if (session && session.renderState.layers !== undefined && session.hasMediaLayer === undefined
+            ) {
+
+                console.log("creating media layer")
+                session.hasMediaLayer = true;
+                session.requestReferenceSpace('local-floor').then((refSpace) => {
+
+                    glBinding = xr.getBinding();
+                    xrSpace = refSpace;
+                    // createEquireLayer(compressed360Textures[0], null, false)    
+
+
+                });
+
+            }
+
+            if (session && active_WebXR_Layer && active_WebXR_Layer.type === "WebXREquirectangularLayer" && active_WebXR_Layer.equirectangularLayer.needsRedraw) {
+
+                let format = eval(active_WebXR_Layer.format);
+                let width = active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].width;
+                let height = active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].height;
+
+                if (!active_WebXR_Layer.stereo) {
+                    let glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame);
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                    gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].data);
+                    gl.bindTexture(gl.TEXTURE_2D, null);
+
+                } else {
+                    let glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame, "left");
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                    gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].data);
+                    gl.bindTexture(gl.TEXTURE_2D, null);
+
+                    glayer = glBinding.getSubImage(active_WebXR_Layer.equirectangularLayer, frame, "right");
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                    gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, active_WebXR_Layer.Equirectangular_Texture.mipmaps[0].data);
+                    gl.bindTexture(gl.TEXTURE_2D, null);
+
+                }
+
+
+
+            } else if (session && active_WebXR_Layer && active_WebXR_Layer.type === "WebXRCubeLayer" && active_WebXR_Layer.cubeLayer.needsRedraw) {
+
+                let format = eval(active_WebXR_Layer.format);
+                let width = active_WebXR_Layer.Cube_Texture.source.data[0].width;
+
+                if (!active_WebXR_Layer.stereo) {
+                    let glayer = glBinding.getSubImage(active_WebXR_Layer.cubeLayer, frame);
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
+
+
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[0].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[1].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[2].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[3].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[4].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[5].mipmaps[0].data); //es
+
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+                } else {
+
+                    let glayer = glBinding.getSubImage(active_WebXR_Layer.cubeLayer, frame, "left");
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
+
+
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[0].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[1].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[2].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[3].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[4].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture.source.data[5].mipmaps[0].data); //es
+
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+
+                    glayer = glBinding.getSubImage(active_WebXR_Layer.cubeLayer, frame, "right");
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
+
+
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture_Right.source.data[0].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture_Right.source.data[1].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture_Right.source.data[2].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture_Right.source.data[3].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture_Right.source.data[4].mipmaps[0].data); //es
+                    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, active_WebXR_Layer.Cube_Texture_Right.source.data[5].mipmaps[0].data); //es
+
+
+                    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+
+
+
+                }
+
+            }
+
+            renderer.render(scene, camera);
+            controls.update();
 
         }
 
 
-        function onWindowResize() {
 
+
+
+
+
+        //utils
+
+        function onWindowResize() {
+            console.log('resize')
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
 
@@ -343,169 +423,8 @@
 
         }
 
-
-
-        function createKTX2Loader() {
-
-            ktx2Loader = new KTX2Loader();
-            ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
-            ktx2Loader.detectSupport(renderer);
-
-        }
-
-
-        function getTexturedData(url = sources[0]) {
-
-            ktx2Loader.load(url, //will also pass us the compressed data toS ./textures/ktx2/cubemap_etc1s.ktx2  //'./textures/ktx2/cubemap_etc1s.ktx2'
-                (texture) => {
-
-                    console.log("jgfhgfgjh", texture)
-                   
-
-                    if (texture.isCompressedCubeTexture) {
-
-
-                        //uh-oh
-
-
-                    } else {
-                        //create equirectangular
-
-                        console.log("creating equirectangular texture")
-
-                        // let equireCompressedTexture = {
-                        //     "height": texture.mipmaps[0].height,
-                        //     "width": texture.mipmaps[0].width,
-                        //     "data": texture.mipmaps[0].data,
-                        //     "format": supportedCompressedFormats.get(texture.format),
-
-                        // }
-                        ktx2Textures.push(texture)
-                        active_360_Texture =  ktx2Textures[0]
-                        // compressed_360_Texture_Data_Array.push(equireCompressedTexture)
-
-
-                    }
-
-                }, null, null);
-        }
-
-        function getData(){
-            console.log(ktx2Textures[0].mipmaps[0].height, "height")
-            console.log(ktx2Textures[0].mipmaps[0].width, "width")
-            console.log(ktx2Textures[0].mipmaps[0].data, "data")
-            console.log(supportedCompressedFormats.get(ktx2Textures[0].format), "format")
-        }
-
-        window.getData = getData
-
-
-
-
-
-
-        function setImageData(data, height, width) {
-            //helper function executed by the loader when are data is loaded
-
-
-
-        }
-
-
-
-
-
-        //loop
-
-
-        let first = true;
-
-        function animate(t, frame) {
-
-            const xr = renderer.xr;
-            const session = xr.getSession();
-            xrSession = session;
-            window.xrSession = xrSession
-            gl = renderer.getContext();
-            window.gl = gl
-
-            if (first) {
-
-                ext = gl.getExtension("WEBGL_compressed_texture_astc")
-
-
-                if (ext) {
-                    console.log("supports WEBGL_compressed_texture_etc")
-                } else {
-                    console.log("fuck")
-                }
-
-
-                createKTX2Loader()
-                loadImages()
-                first = false;
-
-            }
-
-
-
-
-            if (session && session.renderState.layers !== undefined && session.hasMediaLayer === undefined
-            ) {
-
-                session.hasMediaLayer = true;
-                session.requestReferenceSpace('local-floor').then((refSpace) => {
-
-                    glBinding = xr.getBinding();
-                    // window.glBinding = glBinding;
-
-                    // window.mediaBinding = mediaBinding;
-                    xrSpace = refSpace;
-
-                    // mediaBinding = new XRMediaBinding(session);
-                    createEquirectLayerByIndex(0)
-
-
-                });
-
-            }
-
-            // console.log(active_360_Texture.mipmaps[0].height, "height")
-            // console.log(ktx2Textures[0].mipmaps[0].width, "width")
-            // console.log(ktx2Textures[0].mipmaps[0].data, "data")
-            // console.log(supportedCompressedFormats.get(ktx2Textures[0].format), "format")
-
-
-            if (session && equirectLayer && equirectLayer.needsRedraw) {
-
-                let glayer = glBinding.getSubImage(equirectLayer, frame);
-                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture.mipmaps[0].width, active_360_Texture.mipmaps[0].height, eval(supportedCompressedFormats.get(active_360_Texture.format)), active_360_Texture.mipmaps[0].data);
-                gl.bindTexture(gl.TEXTURE_2D, null);
-
-            }
-
-
-            controls.update();
-
-
-            renderer.render(scene, camera);
-
-
-
-
-        }
-
-
-
-
-
-
-
     </script>
 
-    <script>
+</body>
 
-
-    </script>
+</html>

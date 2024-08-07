@@ -138,3 +138,108 @@ export class customControllers {
 
 }
 
+
+
+export class WebXRCubeLayer {
+
+    
+    constructor(cubeLayer, Cube_Texture, Cube_Texture_Right, stereo, xrSpace, glBinding, format) {
+        this.cubeLayer = cubeLayer;
+        this.Cube_Texture = Cube_Texture;
+        this.Cube_Texture_Right = Cube_Texture_Right;
+        this.stereo = stereo;
+        this.xrSpace = xrSpace;
+        this.glBinding = glBinding;
+        this.format = format;
+        this.type = "WebXRCubeLayer";
+    }
+
+    // Method to create the WebXR layer
+    createLayer(texture = this.Cube_Texture) {
+        // Logic to create the WebXR layer using this.active_Cube_Texture
+        console.log("Creating WebXR layer with texture:", texture);
+
+
+        this.cubeLayer = this.glBinding.createCubeLayer({
+            space: this.xrSpace,
+            viewPixelWidth: texture.source.data[0].width,
+            viewPixelHeight: texture.source.data[0].height,
+            layout: this.stereo? "stereo" : "mono",
+            colorFormat: this.format,
+            isStatic: false,
+
+        });
+
+
+    }
+
+    // Method to render the WebXR layer
+    renderLayer() {
+        // Logic to render the WebXR layer
+        console.log("Rendering WebXR layer");
+        // Example: someRenderFunction(this.cubeLayer);
+    }
+
+    // Method to check if the layer is stereo
+    isStereo() {
+        return this.stereo;
+    }
+}
+
+
+
+
+export class WebXREquirectangularLayer {
+
+    
+    constructor(equirectangularLayer, Equirectangular_Texture, Equirectangular_Texture_Right, stereo, xrSpace, glBinding, format, radius) {
+        this.equirectangularLayer = equirectangularLayer;
+        this.Equirectangular_Texture = Equirectangular_Texture;
+        this.Equirectangular_Texture_Right = Equirectangular_Texture_Right;
+        this.stereo = stereo;
+        this.xrSpace = xrSpace;
+        this.glBinding = glBinding;
+        this.format = format;
+        this.radius = radius;
+        this.type = "WebXREquirectangularLayer";
+        
+
+    }
+
+    // Method to create the WebXR layer
+    createLayer(texture = this.Equirectangular_Texture) {
+        // Logic to create the WebXR layer using this.active_Cube_Texture
+        console.log("Creating WebXR layer with texture:", texture);
+
+
+        this.equirectangularLayer = this.glBinding.createEquirectLayer({
+            space: this.xrSpace,
+            viewPixelWidth: texture.mipmaps[0].width,
+            viewPixelHeight: texture.mipmaps[0].height,
+            layout: this.stereo ? "stereo" : "mono",
+            colorFormat: this.format,
+            isStatic: "true",
+    
+    
+        });
+
+        this.equirectangularLayer.centralHorizontalAngle = Math.PI * 2;
+        this.equirectangularLayer.upperVerticalAngle = -Math.PI / 2.0;
+        this.equirectangularLayer.lowerVerticalAngle = Math.PI / 2.0;
+        this.equirectangularLayer.radius = this.radius;
+
+
+    }
+
+    // Method to render the WebXR layer
+    renderLayer() {
+        // Logic to render the WebXR layer
+        console.log("Rendering WebXR layer");
+        // Example: someRenderFunction(this.cubeLayer);
+    }
+
+    // Method to check if the layer is stereo
+    isStereo() {
+        return this.stereo;
+    }
+}

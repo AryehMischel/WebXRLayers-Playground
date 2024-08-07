@@ -41,7 +41,7 @@
         import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
         import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
         import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
-        import { customControls, customSkyCamera, setupScene, customRenderer, customControllers } from './main.js';
+        import { customControls, customSkyCamera, setupScene, customRenderer, customControllers, WebXRCubeLayer } from './main.js';
 
 
         let scene, camera, renderer, controls, controllers, group, ktx2Loader, gl, glBinding, xrSpace, xrSession;
@@ -111,6 +111,8 @@
         let active_360_Texture = null
         let active_Cube_Texture = null
         let active_Cube_Texture_Right = null
+
+        let active_WebXR_Layer = null;
         
         // let compressed360StereoTextures = []
         let compressedCubeTextures = []
@@ -216,17 +218,11 @@
         }
 
 
-        function createCubeLayer(texture = active_Cube_Texture) {
+        function createCubeLayer(texture = active_Cube_Texture, stereo = false) {
 
-            cubeLayer = glBinding.createCubeLayer({
-                space: xrSpace,
-                viewPixelWidth: texture.source.data[0].width,
-                viewPixelHeight: texture.source.data[0].height,
-                layout: stereo ? "stereo" : "mono",
-                colorFormat: eval(texture.format),
-                isStatic: false,
-
-            });
+            let cube_layer = new WebXRCubeLayer(null, texture, stereo, xrSpace, glBinding);
+            cube_layer.createLayer()
+            cubeLayer = cube_layer.cubeLayer
             xrSession.updateRenderState({
                 layers: [
                     cubeLayer,
@@ -234,6 +230,15 @@
                 ]
             });
         }
+
+        
+
+        function updateRenderState(){
+           
+        }
+
+        window.updateRenderState = updateRenderState
+
 
         function createCubeLayerByIndex(index) {
 
