@@ -7,14 +7,15 @@ import { InteractiveGroup } from 'three/addons/interactive/InteractiveGroup.js';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
-import { CustomControls, CustomSkyCamera, setupScene, CustomRenderer, CustomControllers, WebXRCubeLayer, WebXREquirectangularLayer} from './main.js';
+import ThreeMeshUI from 'https://cdn.skypack.dev/three-mesh-ui';
+import { CustomControls, CustomSkyCamera, setupScene, CustomRenderer, CustomControllers, WebXRCubeLayer, WebXREquirectangularLayer } from './main.js';
 
 
 let scene, camera, renderer, controls, controllers, group, ktx2Loader, gl, glBinding, xrSpace, xrSession;
 let eqrtRadius = 40;
 
 
-
+const htmlContent = document.querySelector('#html-content');
 //create scene, add lights and some geometry
 scene = new THREE.Scene();
 let meshParent = new THREE.Object3D();
@@ -48,6 +49,27 @@ group = new InteractiveGroup();
 group.listenToXRControllerEvents(controllers[0]);
 group.listenToXRControllerEvents(controllers[1]);
 scene.add(group);
+
+// // Create the HTML button
+// const button = document.createElement('button');
+// button.innerText = 'Click Me';
+// button.style.position = 'absolute';
+// button.style.left = '50%';
+// button.style.top = '50%';
+// button.style.transform = 'translate(-50%, -50%)';
+// button.style.zIndex = 1;
+// button.className = "button";
+// htmlContent.appendChild(button);
+
+// // Create an HTMLMesh to attach the button to the plane
+// const mesh = new HTMLMesh(button);
+// mesh.position.x = - 0.75;
+// mesh.position.y = 1.5;
+// mesh.position.z = - 0.5;
+// mesh.rotation.y = Math.PI / 4;
+// mesh.scale.setScalar(2);
+
+// group.add(mesh);
 
 
 //create ktx2 loader ?maybe should be a function?
@@ -106,6 +128,7 @@ for (let i = 0; i < sources.length; i++) {
 }
 
 
+let offset = 0;
 //create a compressed texture and then create a webxr layer from that texture. 
 function createCompressedTextureLayer(image) {
 
@@ -122,22 +145,28 @@ function createCompressedTextureLayer(image) {
 
             if (image.type === "stereoCubeMap") {
                 console.log(`adding other side to stereocube texture ${image.url}`)
-                if(image.name in cubeLayers){
-                    if(image.leftSide){
+                if (image.name in cubeLayers) {
+                    if (image.leftSide) {
                         cubeLayers[image.name].Cube_Texture = texture
-                    }else{
+                    } else {
                         cubeLayers[image.name].Cube_Texture_Right = texture
                     }
-                }else{
+                } else {
                     console.log("created stereo cube texture, creating webxr layer")
-                    if(image.leftSide){
+                    if (image.leftSide) {
                         let cubeLayer = new WebXRCubeLayer(null, texture, null, true, format);
                         cubeLayers[image.name] = cubeLayer
-                    }else{
+                        offset += 0.1;
+                        createButton(image.name, () => { selectActiveLayer(image.name, cubeLayers) }, offset)
+                    } else {
                         let cubeLayer = new WebXRCubeLayer(null, null, texture, true, format);
                         cubeLayers[image.name] = cubeLayer
+                        offset += 0.1;
+                        createButton(image.name, () => { selectActiveLayer(image.name, cubeLayers) }, offset)
+
+
                     }
- 
+
                 }
             }
 
@@ -146,20 +175,25 @@ function createCompressedTextureLayer(image) {
 
                 let cubeLayer = new WebXRCubeLayer(null, texture, null, false, format);
                 cubeLayers[image.name] = cubeLayer
-                //compressedCubeTextures.push(texture)
+                offset += 0.1;
+                createButton(image.name, () => { selectActiveLayer(image.name, cubeLayers) }, offset)
+               
             }
             if (image.type === "equirectangular") {
                 console.log("created equirectangular texture, creating webxr layer")
 
                 let equirectLayer = new WebXREquirectangularLayer(null, texture, false, format, eqrtRadius);
                 equirectangularLayers[image.name] = equirectLayer
-                //compressed360Textures.push(texture)
+                offset += 0.1;
+                createButton(image.name, () => { selectActiveLayer(image.name, equirectangularLayers) }, offset)
             }
             if (image.type === "stereoEquirectangular") {
                 console.log("created stereo equirectangular texture, creating webxr layer")
 
                 let stereoEquirectLayer = new WebXREquirectangularLayer(null, texture, true, format, eqrtRadius);
                 equirectangularLayers[image.name] = stereoEquirectLayer
+                offset += 0.1;
+                createButton(image.name, () => { selectActiveLayer(image.name, equirectangularLayers) }, offset)
                 //compressed360Textures.push(texture)
             }
 
@@ -409,7 +443,7 @@ function selectActiveLayer(imagename = 'textures/compressedCubeMaps/cubemapRight
 
     let layer = imagetype[imagename]
     layer.createLayer()
-    if(activeWebXRLayer){activeWebXRLayer.layer.destroy()}
+    if (activeWebXRLayer) { activeWebXRLayer.layer.destroy() }
 
     activeWebXRLayer = layer
 
@@ -435,6 +469,30 @@ function onSessionEnd() {
 function onSessionStart() {
     console.log("session started")
     meshParent.visible = false;
+}
+
+
+
+function createButton(name, callbackFunction, _offset){
+    console.log(_offset)
+    let button = document.createElement('button');
+    button.onclick = () => { callbackFunction()}; //{}
+    button.innerText = `Click Me ${name}`;
+    button.style.zIndex = 1;
+    button.className = "button";
+    htmlContent.appendChild(button);
+
+    // Create an HTMLMesh to attach the button to the plane
+    let mesh = new HTMLMesh(button);
+    mesh.position.x = - 0.75 ;
+    mesh.position.y = 1.5 + _offset;
+    mesh.position.z = - 0.5 ;
+    mesh.rotation.y = Math.PI / 4;
+    mesh.scale.setScalar(2);
+
+    group.add(mesh);
+   
+
 }
 
 

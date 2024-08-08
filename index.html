@@ -1,5 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
+<style>
+    .button-container {
+        display: flex;
+        /* Enable Flexbox layout */
+        justify-content: space-around;
+        /* Distribute space evenly around items */
+        align-items: center;
+        /* Align items vertically centered */
+        height: 100vh;
+        /* Make the container take the full viewport height */
+        background-color: #f0f0f0;
+        /* Light gray background for contrast */
+    }
+
+    /* Button styling */
+    .button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        background-color: #007BFF;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+    }
+</style>
 
 <head>
     <title>three.js vr - layers</title>
@@ -20,6 +45,11 @@
         <br />
     </div>
 
+    <div id="html-content" class="button-container">
+        <button id="button1" class="button">Button 1</button>
+        <button id="button2" class="button">Button 2</button>   
+    </div>
+
     <script src="./encoder/build/basis_loader.js"></script>
 
     <script type="importmap">
@@ -31,7 +61,7 @@
         }
     </script>
 
- 
+
 
 </body>
 
@@ -39,40 +69,40 @@
 <script type="module" src="./index.js"></script>
 <script>
 
-/*loose style guide
-
-JavaScript Style Guide
-Naming Conventions
-
-Classes: Use PascalCase (e.g., WebXRCubeLayer).
-Variables and Functions: Use camelCase (e.g., createCubeLayer, compressedCubeTextures).
-Constants: Use UPPER_SNAKE_CASE (e.g., MAX_TEXTURE_SIZE).
-Indentation and Spacing
-
-Not super consistent but ideally...
-Use 4 spaces for indentation.
-Use a single space after keywords (e.g., if (condition) {).
-Use a single space before opening braces { and after closing braces }.
-
-Semicolons: Always use semicolons to terminate statements.
-
-Braces: I tend to use braces for all control structures, even single-line statements. I could be convinced otherwise.
-
-
-
-Functions:
-Use arrow functions for anonymous functions.
-Use named functions for better stack traces.
-
-
-Error Handling: I really gotta start soon...
-
-
-Use double quotes for attribute values.
-Always include closing tags for elements.
-
-
-
-
-*/
+    /*loose style guide
+    
+    JavaScript Style Guide
+    Naming Conventions
+    
+    Classes: Use PascalCase (e.g., WebXRCubeLayer).
+    Variables and Functions: Use camelCase (e.g., createCubeLayer, compressedCubeTextures).
+    Constants: Use UPPER_SNAKE_CASE (e.g., MAX_TEXTURE_SIZE).
+    Indentation and Spacing
+    
+    Not super consistent but ideally...
+    Use 4 spaces for indentation.
+    Use a single space after keywords (e.g., if (condition) {).
+    Use a single space before opening braces { and after closing braces }.
+    
+    Semicolons: Always use semicolons to terminate statements.
+    
+    Braces: I tend to use braces for all control structures, even single-line statements. I could be convinced otherwise.
+    
+    
+    
+    Functions:
+    Use arrow functions for anonymous functions.
+    Use named functions for better stack traces.
+    
+    
+    Error Handling: I really gotta start soon...
+    
+    
+    Use double quotes for attribute values.
+    Always include closing tags for elements.
+    
+    
+    
+    
+    */
 </script>
