@@ -7,7 +7,11 @@ import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFa
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { getGLBinding, getXRSpace } from './index.js';
+
 let sceneInstance = null;
+let glBinding = null;
+let xrSpace = null;
 
 export function getScene() {
     if (!sceneInstance) {
@@ -17,14 +21,8 @@ export function getScene() {
     return sceneInstance;
 }
 
-export class test {
-    constructor(string) {
-        this.string = string;
-        console.log(string)
-    }
-}
 
-export class customControls {
+export class CustomControls {
     constructor(camera, renderer) {
         this.controls = new OrbitControls(camera, renderer.domElement);
         this.controls.listenToKeyEvents(window); // optional
@@ -45,7 +43,7 @@ export class customControls {
     }
 }
 
-export class customSkyCamera {
+export class CustomSkyCamera {
     constructor() {
         this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
         this.camera.position.set(400, 200, 0);
@@ -53,13 +51,14 @@ export class customSkyCamera {
 
 }
 
-export function setupScene(scene) {
+export function setupScene(scene, meshParent) {
     const hemLight = new THREE.HemisphereLight(0x808080, 0x606060, 3);
     const light = new THREE.DirectionalLight(0xffffff, 3);
     scene.add(hemLight, light);
 
     let geometry = new THREE.ConeGeometry(10, 30, 4, 1);
     let material = new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true });
+
 
     for (let i = 0; i < 500; i++) {
 
@@ -69,7 +68,7 @@ export function setupScene(scene) {
         mesh.position.z = Math.random() * 1600 - 800;
         mesh.updateMatrix();
         mesh.matrixAutoUpdate = false;
-        scene.add(mesh);
+        meshParent.add(mesh);
 
     }
     const dirLight1 = new THREE.DirectionalLight(0xffffff, 3);
@@ -86,9 +85,9 @@ export function setupScene(scene) {
 }
 
 
-export class customRenderer {
+export class CustomRenderer {
     constructor() {
-        console.log("creating")
+        console.log("creating renderer")
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -100,7 +99,7 @@ export class customRenderer {
     }
 }
 
-export class customControllers {
+export class CustomControllers {
 
     constructor(scene, renderer) {
         const controllerModelFactory = new XRControllerModelFactory();
@@ -142,29 +141,33 @@ export class customControllers {
 
 export class WebXRCubeLayer {
 
-    
-    constructor(cubeLayer, Cube_Texture, Cube_Texture_Right, stereo, xrSpace, glBinding, format) {
-        this.cubeLayer = cubeLayer;
+
+    constructor(layer, Cube_Texture, Cube_Texture_Right, stereo, format) {
+        this.layer = layer;
         this.Cube_Texture = Cube_Texture;
         this.Cube_Texture_Right = Cube_Texture_Right;
         this.stereo = stereo;
-        this.xrSpace = xrSpace;
-        this.glBinding = glBinding;
         this.format = format;
         this.type = "WebXRCubeLayer";
     }
 
     // Method to create the WebXR layer
     createLayer(texture = this.Cube_Texture) {
+
+
+        if (!glBinding) { glBinding = getGLBinding() }
+        if (!xrSpace) { xrSpace = getXRSpace() }
+
+
         // Logic to create the WebXR layer using this.active_Cube_Texture
         console.log("Creating WebXR layer with texture:", texture);
 
 
-        this.cubeLayer = this.glBinding.createCubeLayer({
-            space: this.xrSpace,
+        this.layer = glBinding.createCubeLayer({
+            space: xrSpace,
             viewPixelWidth: texture.source.data[0].width,
             viewPixelHeight: texture.source.data[0].height,
-            layout: this.stereo? "stereo" : "mono",
+            layout: this.stereo ? "stereo" : "mono",
             colorFormat: this.format,
             isStatic: false,
 
@@ -191,42 +194,39 @@ export class WebXRCubeLayer {
 
 export class WebXREquirectangularLayer {
 
-    
-    constructor(equirectangularLayer, Equirectangular_Texture, Equirectangular_Texture_Right, stereo, xrSpace, glBinding, format, radius) {
-        this.equirectangularLayer = equirectangularLayer;
+
+    constructor(layer, Equirectangular_Texture, stereo, format, radius) {
+        this.layer = layer;
         this.Equirectangular_Texture = Equirectangular_Texture;
-        this.Equirectangular_Texture_Right = Equirectangular_Texture_Right;
         this.stereo = stereo;
-        this.xrSpace = xrSpace;
-        this.glBinding = glBinding;
         this.format = format;
         this.radius = radius;
         this.type = "WebXREquirectangularLayer";
-        
+
 
     }
 
     // Method to create the WebXR layer
     createLayer(texture = this.Equirectangular_Texture) {
-        // Logic to create the WebXR layer using this.active_Cube_Texture
-        console.log("Creating WebXR layer with texture:", texture);
+ 
+        if (!glBinding) { glBinding = getGLBinding() }
+        if (!xrSpace) { xrSpace = getXRSpace() }
 
-
-        this.equirectangularLayer = this.glBinding.createEquirectLayer({
-            space: this.xrSpace,
+        this.layer = glBinding.createEquirectLayer({
+            space: xrSpace,
             viewPixelWidth: texture.mipmaps[0].width,
             viewPixelHeight: texture.mipmaps[0].height / (this.stereo ? 2 : 1),
             layout: this.stereo ? "stereo-top-bottom" : "mono",
             colorFormat: this.format,
             isStatic: "true",
-    
-    
+
+
         });
 
-        this.equirectangularLayer.centralHorizontalAngle = Math.PI * 2;
-        this.equirectangularLayer.upperVerticalAngle = -Math.PI / 2.0;
-        this.equirectangularLayer.lowerVerticalAngle = Math.PI / 2.0;
-        this.equirectangularLayer.radius = this.radius;
+        this.layer.centralHorizontalAngle = Math.PI * 2;
+        this.layer.upperVerticalAngle = -Math.PI / 2.0;
+        this.layer.lowerVerticalAngle = Math.PI / 2.0;
+        this.layer.radius = this.radius;
 
 
     }
