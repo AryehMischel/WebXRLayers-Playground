@@ -13,7 +13,7 @@ import { CustomControls, CustomSkyCamera, setupScene, CustomRenderer, CustomCont
 
 let scene, camera, renderer, controls, controllers, group, ktx2Loader, gl, glBinding, xrSpace, xrSession;
 let eqrtRadius = 40;
-
+let redraw = false;
 
 const htmlContent = document.querySelector('#html-content');
 //create scene, add lights and some geometry
@@ -88,6 +88,12 @@ let sources = [
     { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
     { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
     { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+    { name: "bf4_1", url: 'textures/compressed360Stereo/bf4_uastc_1.ktx2', type: "stereoEquirectangular" },
+    { name: "bf4_2", url: 'textures/compressed360Stereo/bf4_uastc_2.ktx2', type: "stereoEquirectangular" },
+    { name: "bf4_3", url: 'textures/compressed360Stereo/bf4_uastc_3.ktx2', type: "stereoEquirectangular" },
+
+
+    
     { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
     { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
 ]
@@ -157,12 +163,14 @@ function createCompressedTextureLayer(image) {
                         let cubeLayer = new WebXRCubeLayer(null, texture, null, true, format);
                         cubeLayers[image.name] = cubeLayer
                         offset += 0.1;
-                        createButton(image.name, () => { selectActiveLayer(image.name, cubeLayers) }, offset)
+                        createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers)},0, offset)
+                        createButton(image.name + " set layer", () => { setLayer(image.name, cubeLayers)}, 0.2, offset )
                     } else {
                         let cubeLayer = new WebXRCubeLayer(null, null, texture, true, format);
                         cubeLayers[image.name] = cubeLayer
                         offset += 0.1;
-                        createButton(image.name, () => { selectActiveLayer(image.name, cubeLayers) }, offset)
+                        createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers)}, 0, offset)
+                        createButton(image.name + " set layer", () => { setLayer(image.name, cubeLayers)}, 0.2, offset )
 
 
                     }
@@ -176,7 +184,9 @@ function createCompressedTextureLayer(image) {
                 let cubeLayer = new WebXRCubeLayer(null, texture, null, false, format);
                 cubeLayers[image.name] = cubeLayer
                 offset += 0.1;
-                createButton(image.name, () => { selectActiveLayer(image.name, cubeLayers) }, offset)
+                createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers) }, 0, offset)
+                createButton(image.name + " set layer"   , () => { setLayer(image.name, cubeLayers) }, 0.2, offset)
+
                
             }
             if (image.type === "equirectangular") {
@@ -185,7 +195,9 @@ function createCompressedTextureLayer(image) {
                 let equirectLayer = new WebXREquirectangularLayer(null, texture, false, format, eqrtRadius);
                 equirectangularLayers[image.name] = equirectLayer
                 offset += 0.1;
-                createButton(image.name, () => { selectActiveLayer(image.name, equirectangularLayers) }, offset)
+                createButton(image.name + " create layer", () => { createLayer(image.name, equirectangularLayers)},0, offset)
+                createButton(image.name + " set layer", () => { setLayer(image.name, equirectangularLayers) },0.2, offset)
+
             }
             if (image.type === "stereoEquirectangular") {
                 console.log("created stereo equirectangular texture, creating webxr layer")
@@ -193,7 +205,8 @@ function createCompressedTextureLayer(image) {
                 let stereoEquirectLayer = new WebXREquirectangularLayer(null, texture, true, format, eqrtRadius);
                 equirectangularLayers[image.name] = stereoEquirectLayer
                 offset += 0.1;
-                createButton(image.name, () => { selectActiveLayer(image.name, equirectangularLayers) }, offset)
+                createButton(image.name + " create layer", () => { createLayer(image.name, equirectangularLayers)},0, offset)
+                createButton(image.name + " set layer", () => { setLayer(image.name, equirectangularLayers) },0.2, offset)
                 //compressed360Textures.push(texture)
             }
 
@@ -322,8 +335,8 @@ function animate(t, frame) {
 
     }
 
-    if (session && activeWebXRLayer && activeWebXRLayer.type === "WebXREquirectangularLayer" && activeWebXRLayer.layer.needsRedraw) {
-
+    if (session && activeWebXRLayer && activeWebXRLayer.type === "WebXREquirectangularLayer" && (activeWebXRLayer.layer.needsRedraw || redraw)) {
+        redraw = false;
         let format = eval(activeWebXRLayer.format);
         let width = activeWebXRLayer.Equirectangular_Texture.mipmaps[0].width;
         let height = activeWebXRLayer.Equirectangular_Texture.mipmaps[0].height;
@@ -342,8 +355,8 @@ function animate(t, frame) {
 
 
 
-    } else if (session && activeWebXRLayer && activeWebXRLayer.type === "WebXRCubeLayer" && activeWebXRLayer.layer.needsRedraw) {
-
+    } else if (session && activeWebXRLayer && activeWebXRLayer.type === "WebXRCubeLayer" && (activeWebXRLayer.layer.needsRedraw || redraw)) {
+        redraw = false;
         let format = eval(activeWebXRLayer.format);
         let width = activeWebXRLayer.Cube_Texture.source.data[0].width;
 
@@ -443,7 +456,7 @@ function selectActiveLayer(imagename = 'textures/compressedCubeMaps/cubemapRight
 
     let layer = imagetype[imagename]
     layer.createLayer()
-    if (activeWebXRLayer) { activeWebXRLayer.layer.destroy() }
+   // if (activeWebXRLayer) { activeWebXRLayer.layer.destroy() }
 
     activeWebXRLayer = layer
 
@@ -453,6 +466,40 @@ function selectActiveLayer(imagename = 'textures/compressedCubeMaps/cubemapRight
             xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
         ]
     });
+}
+
+function createLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers){
+    let layer = imagetype[imagename]
+    layer.createLayer()
+}
+
+function destroyLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers){
+    let layer = imagetype[imagename]
+    layer.destroy()
+
+   }
+
+function setLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers){
+    if (activeWebXRLayer) { 
+        activeWebXRLayer.layer.destroy()
+        console.log("destroyed layer")
+        console.log("setting new layer!")
+
+
+     }
+    let layer = imagetype[imagename]
+    activeWebXRLayer = layer
+
+    console.log(activeWebXRLayer.layer)
+
+
+    xrSession.updateRenderState({
+        layers: [
+            activeWebXRLayer.layer,
+            xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+        ]
+    });
+
 
 }
 
@@ -473,21 +520,43 @@ function onSessionStart() {
 
 
 
-function createButton(name, callbackFunction, _offset){
-    console.log(_offset)
+// function createButton(name, callbackFunction, _offset){
+//     console.log(_offset)
+//     let button = document.createElement('button');
+//     button.onclick = () => { callbackFunction()}; //{}
+//     button.innerText = `Click Me ${name}`;
+//     button.style.zIndex = 1;
+//     button.className = "button";
+//     htmlContent.appendChild(button);
+
+//     // Create an HTMLMesh to attach the button to the plane
+//     let mesh = new HTMLMesh(button);
+//     mesh.position.x = - 0.75 ;
+//     mesh.position.y = 1.5 + _offset;
+//     mesh.position.z = - 0.5 ;
+//     mesh.rotation.y = Math.PI / 4;
+//     mesh.scale.setScalar(2);
+
+//     group.add(mesh);
+   
+
+// }
+
+
+function createButton(name, callbackFunction, xOffset, yOffset){
     let button = document.createElement('button');
     button.onclick = () => { callbackFunction()}; //{}
-    button.innerText = `Click Me ${name}`;
+    button.innerText = `${name}`;
     button.style.zIndex = 1;
     button.className = "button";
     htmlContent.appendChild(button);
 
     // Create an HTMLMesh to attach the button to the plane
     let mesh = new HTMLMesh(button);
-    mesh.position.x = - 0.75 ;
-    mesh.position.y = 1.5 + _offset;
-    mesh.position.z = - 0.5 ;
-    mesh.rotation.y = Math.PI / 4;
+    mesh.position.x = - 0.75 + xOffset;
+    mesh.position.y = 1.5 + (yOffset * 1.5);
+    mesh.position.z = - 0.5  + (-xOffset * 4);
+    mesh.rotation.y = (Math.PI / 4);
     mesh.scale.setScalar(2);
 
     group.add(mesh);
