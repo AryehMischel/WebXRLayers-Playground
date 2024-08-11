@@ -18,15 +18,6 @@ import { CustomControls, CustomSkyCamera, setupScene, CustomRenderer, CustomCont
 
 let scene, camera, renderer, controls, controllers, group, ktx2Loader, gl, glBinding, xrSpace, xrSession;
 let eqrtRadius = 40;
-let redraw = false;
-
-//prebuilt layers
-
-let bf4Layer = null;
-let stereoCubeLayer = null;
-let rightCubeLayer = null;
-let nasaLayer = null;
-
 
 let layers = []
 let layersToDraw = []
@@ -67,28 +58,6 @@ group.listenToXRControllerEvents(controllers[0]);
 group.listenToXRControllerEvents(controllers[1]);
 scene.add(group);
 
-// // Create the HTML button
-// const button = document.createElement('button');
-// button.innerText = 'Click Me';
-// button.style.position = 'absolute';
-// button.style.left = '50%';
-// button.style.top = '50%';
-// button.style.transform = 'translate(-50%, -50%)';
-// button.style.zIndex = 1;
-// button.className = "button";
-// htmlContent.appendChild(button);
-
-// // Create an HTMLMesh to attach the button to the plane
-// const mesh = new HTMLMesh(button);
-// mesh.position.x = - 0.75;
-// mesh.position.y = 1.5;
-// mesh.position.z = - 0.5;
-// mesh.rotation.y = Math.PI / 4;
-// mesh.scale.setScalar(2);
-
-// group.add(mesh);
-
-
 //create ktx2 loader ?maybe should be a function?
 ktx2Loader = new KTX2Loader();
 ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
@@ -103,14 +72,14 @@ let cubeLayers = new Object();
 // './textures/compressed360/bf4.ktx2', './textures/compressed360/Italy_Mountains.ktx2', './textures/compressed360/SnowySnow360.ktx2', './textures/compressed360/Mountain.ktx2',
 let sources = [
 
-{ name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
-{ name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
-// { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+    { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
+    { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
+    // { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
 
 
     { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
     { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
-{ name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+    { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
 
 ]
 
@@ -234,7 +203,7 @@ function createCompressedTextureLayer(image) {
 
 
 
-          
+
             }
 
             // IMAGE FORMAT VALIDATION. 
@@ -342,7 +311,6 @@ function animate(t, frame) {
 
 
     if (session && layersToDraw.length > 0) {
-        console.log("googd")
         for (let layer in layersToDraw) {
             if (layersToDraw[layer].layer.needsRedraw) {
                 console.log(layersToDraw[layer].type)
@@ -363,7 +331,7 @@ function animate(t, frame) {
                         layersToDraw.splice(layer, 1);
                     } else {
                         redrawEquirectangular(layersToDraw[layer])
-                        layersToDraw.splice(layer, 1);   
+                        layersToDraw.splice(layer, 1);
                     }
                 }
             }
@@ -373,217 +341,107 @@ function animate(t, frame) {
     }
 
 
-function redrawCube(layer) {
-    console.log("redrawing cube layer")
+    function redrawCube(layer) {
+        console.log("redrawing cube layer")
 
-    let format = eval(layer.format);
-    let width = layer.Cube_Texture.source.data[0].width;
+        let format = eval(layer.format);
+        let width = layer.Cube_Texture.source.data[0].width;
 
 
-    let glayer = glBinding.getSubImage(layer.layer, frame);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
+        let glayer = glBinding.getSubImage(layer.layer, frame);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
 
 
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[0].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[1].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[2].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[3].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[4].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[5].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[0].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[1].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[2].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[3].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[4].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[5].mipmaps[0].data); //es
 
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
 
-}
+    }
 
-function redrawEquirectangular(layer) {
-    console.log("redrawing equirectangular layer")
-    let format = eval(layer.format);
-    let width = layer.Equirectangular_Texture.mipmaps[0].width;
-    let height = layer.Equirectangular_Texture.mipmaps[0].height;
+    function redrawEquirectangular(layer) {
+        console.log("redrawing equirectangular layer")
+        let format = eval(layer.format);
+        let width = layer.Equirectangular_Texture.mipmaps[0].width;
+        let height = layer.Equirectangular_Texture.mipmaps[0].height;
 
-    let glayer = glBinding.getSubImage(layer.layer, frame);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-    gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
-    gl.bindTexture(gl.TEXTURE_2D, null);
-}
+        let glayer = glBinding.getSubImage(layer.layer, frame);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+        gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
 
 
-function redrawStereoCube(layer) {
-    console.log("redrawing stereo cube layer")
-    let format = eval(layer.format);
-    let width = layer.Cube_Texture.source.data[0].width;
+    function redrawStereoCube(layer) {
+        console.log("redrawing stereo cube layer")
+        let format = eval(layer.format);
+        let width = layer.Cube_Texture.source.data[0].width;
 
 
-    let glayer = glBinding.getSubImage(layer.layer, frame, "left");
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
+        let glayer = glBinding.getSubImage(layer.layer, frame, "left");
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
 
 
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[0].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[1].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[2].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[3].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[4].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[5].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[0].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[1].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[2].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[3].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[4].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture.source.data[5].mipmaps[0].data); //es
 
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
 
-    glayer = glBinding.getSubImage(layer.layer, frame, "right");
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
+        glayer = glBinding.getSubImage(layer.layer, frame, "right");
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
 
 
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[0].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[1].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[2].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[3].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[4].mipmaps[0].data); //es
-    gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[5].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[0].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[1].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[2].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[3].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[4].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[5].mipmaps[0].data); //es
 
 
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-}
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+    }
 
-function redrawStereoEquirectangular(layer) {
-    console.log("redrawing stereo equirectangular cube layer")
-    let format = eval(layer.format);
-    let width = layer.Equirectangular_Texture.mipmaps[0].width;
-    let height = layer.Equirectangular_Texture.mipmaps[0].height;
+    function redrawStereoEquirectangular(layer) {
+        console.log("redrawing stereo equirectangular cube layer")
+        let format = eval(layer.format);
+        let width = layer.Equirectangular_Texture.mipmaps[0].width;
+        let height = layer.Equirectangular_Texture.mipmaps[0].height;
 
-    let glayer = glBinding.getSubImage(layer.layer, frame);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-    gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
-    gl.bindTexture(gl.TEXTURE_2D, null);
+        let glayer = glBinding.getSubImage(layer.layer, frame);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+        gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
+        gl.bindTexture(gl.TEXTURE_2D, null);
 
-}
+    }
 
-function renderByIndex(index){
-    xrSession.updateRenderState({
-        layers: [
-            layers[index].layer,
-            xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-        ]
-    });
-}
+    function renderByIndex(index) {
+        xrSession.updateRenderState({
+            layers: [
+                layers[index].layer,
+                xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+            ]
+        });
+    }
 
-window.renderByIndex = renderByIndex
+    window.renderByIndex = renderByIndex
 
 
-
-// function redrawStereoEquirectangularCube(layer) {
-//     console.log("redrawing stereo equirectangular cube layer")
-//     let format = eval(layer.format);
-//     let width = layer.Equirectangular_Texture.mipmaps[0].width;
-//     let height = layer.Equirectangular_Texture.mipmaps[0].height;
-
-//     let glayer = glBinding.getSubImage(layer.layer, frame);
-//     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-//     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-//     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
-//     gl.bindTexture(gl.TEXTURE_2D, null);
-
-// }
-
-
-
-// //stereoEquirectangularLayer
-// if (session && layer && layer.layer.needsRedraw) {
-//     console.log("redrawing bf4 layer")
-//     let format = eval(layer.format);
-//     let width = layer.Equirectangular_Texture.mipmaps[0].width;
-//     let height = layer.Equirectangular_Texture.mipmaps[0].height;
-
-//     let glayer = glBinding.getSubImage(layer.layer, frame);
-//     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-//     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-//     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
-//     gl.bindTexture(gl.TEXTURE_2D, null);
-// }
-
-// //stereoCubeLayer
-// if (session && stereoCubeLayer && stereoCubeLayer.layer.needsRedraw) {
-
-//     console.log("redrawing stereo cube layer")
-//     let format = eval(stereoCubeLayer.format);
-//     let width = stereoCubeLayer.Cube_Texture.source.data[0].width;
-
-
-//     let glayer = glBinding.getSubImage(stereoCubeLayer.layer, frame, "left");
-//     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-//     gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
-
-
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture.source.data[0].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture.source.data[1].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture.source.data[2].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture.source.data[3].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture.source.data[4].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture.source.data[5].mipmaps[0].data); //es
-
-//     gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-
-//     glayer = glBinding.getSubImage(stereoCubeLayer.layer, frame, "right");
-//     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-//     gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
-
-
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture_Right.source.data[0].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture_Right.source.data[1].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture_Right.source.data[2].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture_Right.source.data[3].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture_Right.source.data[4].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, stereoCubeLayer.Cube_Texture_Right.source.data[5].mipmaps[0].data); //es
-
-
-//     gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-
-
-
-// }
-
-// if (session && rightCubeLayer && rightCubeLayer.needsRedraw) {
-
-//     let format = eval(rightCubeLayer.format);
-//     let width = rightCubeLayer.Cube_Texture.source.data[0].width;
-
-
-//     let glayer = glBinding.getSubImage(rightCubeLayer.layer, frame);
-//     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-//     gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
-
-
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, rightCubeLayer.Cube_Texture.source.data[0].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, rightCubeLayer.Cube_Texture.source.data[1].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, rightCubeLayer.Cube_Texture.source.data[2].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, rightCubeLayer.Cube_Texture.source.data[3].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, width, width, format, rightCubeLayer.Cube_Texture.source.data[4].mipmaps[0].data); //es
-//     gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, width, width, format, rightCubeLayer.Cube_Texture.source.data[5].mipmaps[0].data); //es
-
-//     gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
-
-// }
-
-// //equirectangular 
-// if (session && nasaLayer && nasaLayer.needsRedraw) {
-//     let format = eval(nasaLayer.format);
-//     let width = nasaLayer.Equirectangular_Texture.mipmaps[0].width;
-//     let height = nasaLayer.Equirectangular_Texture.mipmaps[0].height;
-
-//     let glayer = glBinding.getSubImage(nasaLayer.layer, frame);
-//     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-//     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-//     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, nasaLayer.Equirectangular_Texture.mipmaps[0].data);
-//     gl.bindTexture(gl.TEXTURE_2D, null);
-
-// }
-
-
-
-renderer.render(scene, camera);
-controls.update();
+    renderer.render(scene, camera);
+    controls.update();
 
 }
 
@@ -647,34 +505,34 @@ function createEquirectangularLayer(imagename = 'textures/compressedCubeMaps/cub
     layers.push(layer)
 }
 
-function createStereoEquirectangularLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers){
+function createStereoEquirectangularLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
     let layer = imagetype[imagename]
     layer.createLayer()
     layersToDraw.push(layer)
-    layers.push(layer)  
+    layers.push(layer)
 }
 
 function createStereoCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
-    stereoCubeLayer = imagetype[imagename]
+    let stereoCubeLayer = imagetype[imagename]
     stereoCubeLayer.createLayer()
     layersToDraw.push(stereoCubeLayer)
     layers.push(stereoCubeLayer)
 }
 
-function createCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers){
+function createCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
 
     let cubeLayer = imagetype[imagename]
     console.log("SETTING CUBELAYER" + cubeLayer)
     cubeLayer.createLayer()
     layersToDraw.push(cubeLayer)
     layers.push(cubeLayer)
-    
+
 }
 
 
 
 // function createCubeLayer(texture, texture_right = null, stereo = false) {
-    
+
 //     let format = eval(supportedCompressedFormats.get(texture.format))
 //     let cubeLayer
 
@@ -698,55 +556,55 @@ function createCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.k
 
 
 
-function setStereoCubeLayer() {
-    console.log("is there a " + stereoCubeLayer)
-    layersToDraw.push(stereoCubeLayer)
-    layers.push(stereoCubeLayer)
+// function setStereoCubeLayer() {
+//     console.log("is there a " + stereoCubeLayer)
+//     layersToDraw.push(stereoCubeLayer)
+//     layers.push(stereoCubeLayer)
 
-}
-
-
-
-function createbf4Layer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
-    bf4Layer = imagetype[imagename]
-    bf4Layer.createLayer()
-    layersToDraw.push(bf4Layer)
-
-}
-
-function setbf4Layer() {
-    console.log("hmm")
-    console.log(bf4Layer)
-}
+// }
 
 
 
+// function createbf4Layer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
+//     bf4Layer = imagetype[imagename]
+//     bf4Layer.createLayer()
+//     layersToDraw.push(bf4Layer)
+
+// }
+
+// function setbf4Layer() {
+//     console.log("hmm")
+//     console.log(bf4Layer)
+// }
 
 
-function renderBf4() {
-
-    xrSession.updateRenderState({
-        layers: [
-            bf4Layer.layer,
-            xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-        ]
-    });
 
 
-}
 
-function renderStereoCube() {
-    xrSession.updateRenderState({
-        layers: [
-            stereoCubeLayer.layer,
-            xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-        ]
-    });
+// function renderBf4() {
 
-}
+//     xrSession.updateRenderState({
+//         layers: [
+//             bf4Layer.layer,
+//             xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+//         ]
+//     });
 
-window.Bf = renderBf4
-window.Stereo = renderStereoCube
+
+// }
+
+// function renderStereoCube() {
+//     xrSession.updateRenderState({
+//         layers: [
+//             stereoCubeLayer.layer,
+//             xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+//         ]
+//     });
+
+// }
+
+// window.Bf = renderBf4
+// window.Stereo = renderStereoCube
 
 function onSessionEnd() {
     console.log("session ended")
