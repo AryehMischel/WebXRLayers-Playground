@@ -80,7 +80,11 @@ let sources = [
 
     { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
     { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
-    { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+    { name: "sources/Atlas1.ktx2", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+
+
+    { name: "cubemap_bf", url: 'textures/compressedStereoCubeMaps/cubemap_bf_left.ktx2', type: "stereoCubeMap", leftSide: true },
+    { name: "cubemap_bf", url: 'textures/compressedStereoCubeMaps/cubemap_bf_right.ktx2', type: "stereoCubeMap", leftSide: false },
 
 ]
 
@@ -101,9 +105,6 @@ const ETC_EXT = gl.getExtension("WEBGL_compressed_texture_etc")
 
 if (ASTC_EXT) console.log("ASTC_EXT", ASTC_EXT)
 if (ETC_EXT) console.log("ETC_EXT", ETC_EXT)
-
-//Our three js compressed textures
-let activeWebXRLayer = null;
 
 
 //supported compressed formats
@@ -234,10 +235,10 @@ function animate(t, frame) {
                 console.log(layersToDraw[layer].type)
                 if (layersToDraw[layer].type === "WebXRCubeLayer") {
                     if (layersToDraw[layer].stereo) {
-                        redrawStereoCube(layersToDraw[layer])
+                        drawStereoCube(layersToDraw[layer])
                         layersToDraw.splice(layer, 1);
                     } else {
-                        redrawCube(layersToDraw[layer])
+                        drawCube(layersToDraw[layer])
                         layersToDraw.splice(layer, 1);
 
                     }
@@ -245,10 +246,10 @@ function animate(t, frame) {
                 } else if (layersToDraw[layer].type === "WebXREquirectangularLayer") {
 
                     if (layersToDraw[layer].stereo) {
-                        redrawStereoEquirectangular(layersToDraw[layer])
+                       drawStereoEquirectangular(layersToDraw[layer])
                         layersToDraw.splice(layer, 1);
                     } else {
-                        redrawEquirectangular(layersToDraw[layer])
+                        drawEquirectangular(layersToDraw[layer])
                         layersToDraw.splice(layer, 1);
                     }
                 }
@@ -259,7 +260,7 @@ function animate(t, frame) {
     }
 
 
-    function redrawCube(layer) {
+    function drawCube(layer) {
         console.log("redrawing cube layer")
 
         let format = eval(layer.format);
@@ -282,7 +283,7 @@ function animate(t, frame) {
 
     }
 
-    function redrawEquirectangular(layer) {
+    function drawEquirectangular(layer) {
         console.log("redrawing equirectangular layer")
         let format = eval(layer.format);
         let width = layer.Equirectangular_Texture.mipmaps[0].width;
@@ -296,7 +297,7 @@ function animate(t, frame) {
     }
 
 
-    function redrawStereoCube(layer) {
+    function drawStereoCube(layer) {
         console.log("redrawing stereo cube layer")
         let format = eval(layer.format);
         let width = layer.Cube_Texture.source.data[0].width;
@@ -332,7 +333,7 @@ function animate(t, frame) {
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
     }
 
-    function redrawStereoEquirectangular(layer) {
+    function drawStereoEquirectangular(layer) {
         console.log("redrawing stereo equirectangular cube layer")
         let format = eval(layer.format);
         let width = layer.Equirectangular_Texture.mipmaps[0].width;
@@ -397,23 +398,6 @@ export function getXRSpace() {
     return xrSpace;
 }
 
-
-
-function selectActiveLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {  //cubeLayers, equirectangularLayers
-
-    let layer = imagetype[imagename]
-    layer.createLayer()
-    // if (activeWebXRLayer) { activeWebXRLayer.layer.destroy() }
-
-    activeWebXRLayer = layer
-
-    xrSession.updateRenderState({
-        layers: [
-            activeWebXRLayer.layer,
-            xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-        ]
-    });
-}
 
 
 function createEquirectangularLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
@@ -485,94 +469,10 @@ function selectActiveLayerByName(name){
 
 }
 
-    function renderByIndex(index) {
-      
-    }
-
-
-// function createCubeLayer(texture, texture_right = null, stereo = false) {
-
-//     let format = eval(supportedCompressedFormats.get(texture.format))
-//     let cubeLayer
-
-//     if (!stereo) {
-//         cubeLayer = new WebXRCubeLayer(null, texture, null, false, format);
-//     } else {
-//         cubeLayer = new WebXRCubeLayer(null, texture, texture_right, true, format);
-//     }
-
-
-//     cubeLayer.createLayer()
-//     activeWebXRLayer = cubeLayer
-
-//     xrSession.updateRenderState({
-//         layers: [
-//             activeWebXRLayer.layer,
-//             xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-//         ]
-//     });
-// }
-
-
-
-// function setStereoCubeLayer() {
-//     console.log("is there a " + stereoCubeLayer)
-//     layersToDraw.push(stereoCubeLayer)
-//     layers.push(stereoCubeLayer)
-
-// }
-
-
-
-// function createbf4Layer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
-//     bf4Layer = imagetype[imagename]
-//     bf4Layer.createLayer()
-//     layersToDraw.push(bf4Layer)
-
-// }
-
-// function setbf4Layer() {
-//     console.log("hmm")
-//     console.log(bf4Layer)
-// }
-
-
-
-
-
-// function renderBf4() {
-
-//     xrSession.updateRenderState({
-//         layers: [
-//             bf4Layer.layer,
-//             xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-//         ]
-//     });
-
-
-// }
-
-// function renderStereoCube() {
-//     xrSession.updateRenderState({
-//         layers: [
-//             stereoCubeLayer.layer,
-//             xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-//         ]
-//     });
-
-// }
-
-// window.Bf = renderBf4
-// window.Stereo = renderStereoCube
-
 function onSessionEnd() {
     console.log("session ended")
     meshParent.visible = true;
-    // if (activeWebXRLayer) {
-    //     activeWebXRLayer.layer.destroy();
-    // }
-    // activeWebXRLayer = null;
-    // xrSession = null;
+
 }
 
 function onSessionStart() {
@@ -580,29 +480,6 @@ function onSessionStart() {
     meshParent.visible = false;
 }
 
-
-
-// function createButton(name, callbackFunction, _offset){
-//     console.log(_offset)
-//     let button = document.createElement('button');
-//     button.onclick = () => { callbackFunction()}; //{}
-//     button.innerText = `Click Me ${name}`;
-//     button.style.zIndex = 1;
-//     button.className = "button";
-//     htmlContent.appendChild(button);
-
-//     // Create an HTMLMesh to attach the button to the plane
-//     let mesh = new HTMLMesh(button);
-//     mesh.position.x = - 0.75 ;
-//     mesh.position.y = 1.5 + _offset;
-//     mesh.position.z = - 0.5 ;
-//     mesh.rotation.y = Math.PI / 4;
-//     mesh.scale.setScalar(2);
-
-//     group.add(mesh);
-
-
-// }
 
 
 function createButton(name, callbackFunction, xOffset, yOffset) {
