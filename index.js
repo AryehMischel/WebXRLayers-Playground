@@ -21,6 +21,7 @@ let eqrtRadius = 40;
 
 let layers = []
 let layersToDraw = []
+let layersOBJ = new Object();
 
 
 const htmlContent = document.querySelector('#html-content');
@@ -102,8 +103,6 @@ if (ASTC_EXT) console.log("ASTC_EXT", ASTC_EXT)
 if (ETC_EXT) console.log("ETC_EXT", ETC_EXT)
 
 //Our three js compressed textures
-let compressed360Textures = []
-let compressedCubeTextures = []
 let activeWebXRLayer = null;
 
 
@@ -156,13 +155,11 @@ function createCompressedTextureLayer(image) {
                         cubeLayers[image.name] = cubeLayer
                         offset += 0.1;
                         createButton(image.name + " create layer", () => { createStereoCubeLayer(image.name, cubeLayers) }, 0, offset)
-                        createButton(image.name + " set layer", () => { setStereoCubeLayer() }, 0.2, offset)
                     } else {
                         let cubeLayer = new WebXRCubeLayer(null, null, texture, true, format);
                         cubeLayers[image.name] = cubeLayer
                         offset += 0.1;
                         createButton(image.name + " create layer", () => { createStereoCubeLayer(image.name, cubeLayers) }, 0, offset)
-                        createButton(image.name + " set layer", () => { setStereoCubeLayer() }, 0.2, offset)
 
 
                     }
@@ -177,7 +174,6 @@ function createCompressedTextureLayer(image) {
                 cubeLayers[image.name] = cubeLayer
                 offset += 0.1;
                 createButton(image.name + " create layer", () => { createCubeLayer(image.name, cubeLayers) }, 0, offset)
-                createButton(image.name + " set layer", () => { setLayer(image.name, cubeLayers) }, 0.2, offset)
 
 
             }
@@ -188,7 +184,6 @@ function createCompressedTextureLayer(image) {
                 equirectangularLayers[image.name] = equirectLayer
                 offset += 0.1;
                 createButton(image.name + " create layer", () => { createEquirectangularLayer(image.name, equirectangularLayers) }, 0, offset)
-                createButton(image.name + " set layer", () => { setbf4Layer() }, 0.2, offset)
 
             }
             if (image.type === "stereoEquirectangular") {
@@ -199,93 +194,16 @@ function createCompressedTextureLayer(image) {
 
                 offset += 0.1;
                 createButton(image.name + " create layer", () => { createStereoEquirectangularLayer(image.name, equirectangularLayers) }, 0, offset)
-                createButton(image.name + " set layer", () => { setbf4Layer() }, 0.2, offset)
 
 
 
 
             }
 
-            // IMAGE FORMAT VALIDATION. 
-            // if (texture.isCompressedCubeTexture) {
-            //     VALIDATE CUBE TEXTURE
-            // } else if (texture.isCompressedTexture) {
-            //     VALIDATE EQUIRECTANGULAR TEXTURE
-            // }
-
         }, null, null);
 }
 
-function createEquireLayer(texture, stereo = false) {
 
-
-    let format = eval(supportedCompressedFormats.get(texture.format))
-    let sphereLayer = new WebXREquirectangularLayer(null, texture, stereo, format, eqrtRadius);
-    sphereLayer.createLayer()
-    activeWebXRLayer = sphereLayer
-
-    xrSession.updateRenderState({
-        layers: [
-            activeWebXRLayer.layer,
-            xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-        ]
-    });
-
-
-}
-
-function createEqrtLayerByIndex(index, stereo = false) {
-
-    if (index >= compressed360Textures.length) {
-        console.log("index out of range");
-        return null;
-    }
-    console.log("creating equirectangular layer stereo = ", stereo)
-
-    createEquireLayer(compressed360Textures[index], stereo)
-
-}
-
-
-
-
-
-
-
-
-
-function createCubeLayerByIndex(index) {
-
-    if (index >= compressedCubeTextures.length) {
-        console.log("index out of range");
-        return null;
-    }
-
-    createCubeLayer(compressedCubeTextures[index], null, false)
-
-}
-
-
-function createCubeLayerByIndexStereo(index_left, index_right) {
-    if (index_left >= compressedCubeTextures.length || index_right >= compressedCubeTextures.length) {
-        console.log("index out of range");
-        console.log(compressedCubeTextures.length)
-        return null;
-    }
-
-    if (compressedCubeTextures[index_left].format !== compressedCubeTextures[index_right].format) {
-        console.log("formats do not match")
-        return null;
-    }
-
-
-    createCubeLayer(compressedCubeTextures[index_left], compressedCubeTextures[index_right], true)
-
-}
-
-window.createCubeLayerByIndex = createCubeLayerByIndex
-window.createCubeLayerByIndexStereo = createCubeLayerByIndexStereo
-window.createEqrtLayerByIndex = createEqrtLayerByIndex
 
 //animation loop
 function animate(t, frame) {
@@ -503,6 +421,11 @@ function createEquirectangularLayer(imagename = 'textures/compressedCubeMaps/cub
     layer.createLayer()
     layersToDraw.push(layer)
     layers.push(layer)
+    layersOBJ[imagename] = layer
+    offset -= 0.1;
+    createButton(`show ${imagename}`, () => { selectActiveLayerByName(imagename) }, 0.2, offset)
+
+
 }
 
 function createStereoEquirectangularLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
@@ -510,13 +433,26 @@ function createStereoEquirectangularLayer(imagename = 'textures/compressedCubeMa
     layer.createLayer()
     layersToDraw.push(layer)
     layers.push(layer)
+    layersOBJ[imagename] = layer
+    offset -= 0.1;
+
+
+    createButton(`show ${imagename}`, () => { selectActiveLayerByName(imagename) }, 0.2, offset)
+
 }
 
 function createStereoCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
-    let stereoCubeLayer = imagetype[imagename]
-    stereoCubeLayer.createLayer()
-    layersToDraw.push(stereoCubeLayer)
-    layers.push(stereoCubeLayer)
+    let layer = imagetype[imagename]
+    layer.createLayer()
+    layersToDraw.push(layer)
+    layers.push(layer)
+    layersOBJ[imagename] = layer
+    
+    offset -= 0.1;
+
+    createButton(`show ${imagename}`, () => { selectActiveLayerByName(imagename) }, 0.2, offset)
+
+
 }
 
 function createCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2', imagetype = cubeLayers) {
@@ -526,9 +462,32 @@ function createCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.k
     cubeLayer.createLayer()
     layersToDraw.push(cubeLayer)
     layers.push(cubeLayer)
+    layersOBJ[imagename] = cubeLayer
+
+    offset -= 0.1;
+
+    createButton(`show ${imagename}`, () => { selectActiveLayerByName(imagename) }, 0.2, offset)
+
+
 
 }
 
+function selectActiveLayerByName(name){
+    
+    console.log(layersOBJ[name])
+    xrSession.updateRenderState({
+        layers: [
+            layersOBJ[name].layer,
+            xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+        ]
+    });
+
+
+}
+
+    function renderByIndex(index) {
+      
+    }
 
 
 // function createCubeLayer(texture, texture_right = null, stereo = false) {
