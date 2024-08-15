@@ -73,21 +73,95 @@ let cubeLayers = new Object();
 // './textures/compressed360/bf4.ktx2', './textures/compressed360/Italy_Mountains.ktx2', './textures/compressed360/SnowySnow360.ktx2', './textures/compressed360/Mountain.ktx2',
 let sources = [
 
-    { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
+    // { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
     { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
     // { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
 
 
-    { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
-    { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
-    { name: "sources/Atlas1.ktx2", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+    // { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
+    // { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
+    // { name: "sources/Atlas1.ktx2", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
 
 
-    { name: "cubemap_bf", url: 'textures/compressedStereoCubeMaps/cubemap_bf_left.ktx2', type: "stereoCubeMap", leftSide: true },
-    { name: "cubemap_bf", url: 'textures/compressedStereoCubeMaps/cubemap_bf_right.ktx2', type: "stereoCubeMap", leftSide: false },
+    // { name: "cubemap_bf", url: 'textures/compressedStereoCubeMaps/cubemap_bf_left.ktx2', type: "stereoCubeMap", leftSide: true },
+    // { name: "cubemap_bf", url: 'textures/compressedStereoCubeMaps/cubemap_bf_right.ktx2', type: "stereoCubeMap", leftSide: false },
 
 ]
 
+const img = new Image();
+img.src = 'textures/image.jpg';
+
+let data;
+let rgba;
+
+img.onload = () => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    ctx.drawImage(img, 0, 0);
+
+    // Get RGB data
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    data = imageData.data; // This is a Uint8ClampedArray
+
+    console.log(data)
+    // Access RGB values
+    //   for (let i = 0; i < data.length; i += 4) {
+    //     const red = data[i];
+    //     const green = data[i + 1];
+    //     const blue = data[i + 2];
+    //     const alpha = data[i + 3]; // Optional: you can also access the alpha channel
+
+    //     // Do something with the RGB values (e.g., print them)
+
+    //   }
+
+
+};
+let layer = null;
+
+
+function makeLayer() {
+    // let layer = new WebXREquirectangularLayer(null, texture, true, "gl.RGBA", eqrtRadius);
+    // Method to create the WebXR layer
+
+
+    layer = glBinding.createEquirectLayer({
+        space: xrSpace,
+        viewPixelWidth: 4096,
+        viewPixelHeight: 2048,
+        layout: "mono",
+        colorFormat: gl.RGBA,
+        isStatic: "true",
+
+
+    });
+
+    layer.centralHorizontalAngle = Math.PI * 2;
+    layer.upperVerticalAngle = -Math.PI / 2.0;
+    layer.lowerVerticalAngle = Math.PI / 2.0;
+    layer.radius = 40;
+    // redrawing = true
+
+    xrSession.updateRenderState({
+        layers: [
+            layer,
+            xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+        ]
+    });
+
+    uploadInProgress = true;
+    // layersToDraw.push(layer)
+    // layers.push(layer)
+    // layersOBJ["image"] = layer
+    // offset -= 0.1;
+    // createButton(`show image`, () => { selectActiveLayerByName("image") }, 0.2, offset)
+}
+
+window.makeLayer = makeLayer
 
 
 
@@ -112,7 +186,7 @@ const supportedCompressedFormats = new Map([
     [37496, "ETC_EXT.COMPRESSED_RGBA8_ETC2_EAC"],
     [37492, "ETC_EXT.COMPRESSED_RGB8_ETC2"],
     [37808, "ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"],
-    [1023, "srgb"]
+    [1023, "gl.RGBA "]
 
 ]);
 
@@ -132,12 +206,17 @@ function createCompressedTextureLayer(image) {
 
     ktx2Loader.load(image.url,
         (texture) => {
+            console.log("texture", texture.format)
+            console.log(texture.mipmaps[0].width)
+            console.log(texture.mipmaps[0].height)
+            console.log(texture.mipmaps[0].data)
             if (!ASTC_EXT && !ETC_EXT) {
                 //in the future we should have seperate handling for pc and vr devices. this is just a little hack for now
                 console.log("no compressed texture extensions available")
                 return
             }
 
+            console.log("format", texture.format)
             let format = eval(supportedCompressedFormats.get(texture.format))
 
 
@@ -204,8 +283,47 @@ function createCompressedTextureLayer(image) {
         }, null, null);
 }
 
+// let chunkSize = 512; // Define the size of each chunk (e.g., 512 rows)
+let uploadInProgress = false;
+// let redrawing = false
+// let width = 4096
+// let height = 2048
+// let currentChunk = 0;
+// let totalChunks = Math.ceil(height / chunkSize);
 
+// function uploadNextChunk() {
 
+//     if (currentChunk < totalChunks) {
+//         console.log("huh")
+//         let startRow = currentChunk * chunkSize;
+//         let endRow = Math.min(startRow + chunkSize, height);
+//         let chunkHeight = endRow - startRow;
+//         let chunkData = data.subarray(startRow * width * 4, endRow * width * 4);
+
+//         gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, startRow, width, chunkHeight, gl.RGBA, gl.UNSIGNED_BYTE, chunkData);
+
+//         currentChunk++;
+//     } else {
+//         console.log("Texture upload complete");
+//         // Mark the texture as fully loaded
+//         redrawing = false
+//         layer.needsRedraw = false;
+//     }
+// }
+
+let currentChunk = 0;
+let totalChunks = 2;
+let intermediateTexture = null;
+let width = 4096;   // layer.Equirectangular_Texture.mipmaps[0].width;
+let height = 2048;  // layer.Equirectangular_Texture.mipmaps[0].height;
+
+function initialize() {
+    intermediateTexture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+}
+
+window.initialize = initialize
 //animation loop
 function animate(t, frame) {
 
@@ -228,6 +346,52 @@ function animate(t, frame) {
 
     }
 
+    if (session && layer && layer.needsRedraw) {
+        console.log("redrawing");
+        if (currentChunk < totalChunks) {
+            console.log("uploading data to intermediate texture");
+
+            // Step 1: Create a new WebGL texture
+            let halfHeight = Math.floor(height / 2);
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, halfHeight * currentChunk, width, halfHeight, gl.RGBA, gl.UNSIGNED_BYTE, data.subarray(0, width * halfHeight * 4));
+            currentChunk++;
+        } else {
+            console.log("transfering data from intermediate texture to layer texture");
+
+            // Step 3: Bind the tempTexture to the glayer
+            let glayer = glBinding.getSubImage(layer, frame);
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+            let framebuffer = gl.createFramebuffer();
+            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0)
+
+            if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+                console.error("Framebuffer is not complete");
+            }
+
+            gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+            gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+
+            // Clean up
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.deleteFramebuffer(framebuffer);
+            gl.deleteTexture(intermediateTexture);
+        }
+
+
+
+        // Step 2: Incrementally upload data to the texture
+
+
+
+
+        // let halfHeight = Math.floor(height / 2);
+        // gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, halfHeight, width, halfHeight, gl.RGBA, gl.UNSIGNED_BYTE, data.subarray(0, width * halfHeight * 4));
+        // gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, halfHeight, gl.RGBA, gl.UNSIGNED_BYTE, data.subarray(0, width * halfHeight * 4));
+
+    }
 
     if (session && layersToDraw.length > 0) {
         for (let layer in layersToDraw) {
@@ -246,7 +410,7 @@ function animate(t, frame) {
                 } else if (layersToDraw[layer].type === "WebXREquirectangularLayer") {
 
                     if (layersToDraw[layer].stereo) {
-                       drawStereoEquirectangular(layersToDraw[layer])
+                        drawStereoEquirectangular(layersToDraw[layer])
                         layersToDraw.splice(layer, 1);
                     } else {
                         drawEquirectangular(layersToDraw[layer])
@@ -284,17 +448,65 @@ function animate(t, frame) {
     }
 
     function drawEquirectangular(layer) {
-        console.log("redrawing equirectangular layer")
         let format = eval(layer.format);
         let width = layer.Equirectangular_Texture.mipmaps[0].width;
         let height = layer.Equirectangular_Texture.mipmaps[0].height;
-
+        const textureData = layer.Equirectangular_Texture.mipmaps[0].data; // Your ASTC 4x4 compressed texture data array
+    
+        // Define the portion of the texture you want to copy
+        let portionX = 0; // Starting x position, must be multiple of 4
+        let portionY = Math.floor(height / 2); // Starting y position (halfway down), must be multiple of 4
+        portionY = portionY - (portionY % 4); // Adjust to be multiple of 4
+        let portionWidth = width; // Width of the portion
+        let portionHeight = Math.floor(height / 2); // Height of the portion (half the texture height)
+        portionHeight = portionHeight - (portionHeight % 4); // Adjust to be multiple of 4
+    
+        // Get the block size for the format
+        const blockSize = 16;
+    
+        if (blockSize === 0) {
+            console.error('Unsupported texture format:', format);
+            return;
+        }
+    
+        // Calculate the number of blocks in the portion
+        let numBlocksX = Math.ceil(portionWidth / 4);
+        let numBlocksY = Math.ceil(portionHeight / 4);
+    
+        // Calculate the byte offset for the starting position
+        let startBlockX = Math.floor(portionX / 4);
+        let startBlockY = Math.floor(portionY / 4);
+        let byteOffset = (startBlockY * Math.ceil(width / 4) + startBlockX) * blockSize;
+    
+        // Calculate the size of the portion in bytes
+        let portionSize = numBlocksX * numBlocksY * blockSize;
+    
+        // Extract the portion of the texture data
+        let portionData = textureData.subarray(byteOffset, byteOffset + portionSize);
+    
         let glayer = glBinding.getSubImage(layer.layer, frame);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-        gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
+    
+        // Upload the portion of the texture data
+        gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX, portionY, portionWidth, portionHeight, format, portionData);
+    
         gl.bindTexture(gl.TEXTURE_2D, null);
+
+        // let format = eval(layer.format);
+        // let width = layer.Equirectangular_Texture.mipmaps[0].width;
+        // let height = layer.Equirectangular_Texture.mipmaps[0].height;
+        // const textureData = layer.Equirectangular_Texture.mipmaps[0].data // Your ASTC 4x4 compressed texture data array
+        // let glayer = glBinding.getSubImage(layer.layer, frame);
+        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+        // gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, textureData);
+        // gl.bindTexture(gl.TEXTURE_2D, null);
+
+
     }
+
+
 
 
     function drawStereoCube(layer) {
@@ -431,7 +643,7 @@ function createStereoCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapR
     layersToDraw.push(layer)
     layers.push(layer)
     layersOBJ[imagename] = layer
-    
+
     offset -= 0.1;
 
     createButton(`show ${imagename}`, () => { selectActiveLayerByName(imagename) }, 0.2, offset)
@@ -456,8 +668,8 @@ function createCubeLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.k
 
 }
 
-function selectActiveLayerByName(name){
-    
+function selectActiveLayerByName(name) {
+
     console.log(layersOBJ[name])
     xrSession.updateRenderState({
         layers: [
@@ -504,6 +716,41 @@ function createButton(name, callbackFunction, xOffset, yOffset) {
 }
 
 
-window.selectActiveLayer = selectActiveLayer
+// Helper function to extract the sub-image data with block-aligned dimensions
+function extractSubImageData(data, alignedWidth, alignedHeight, textureWidth) {
+    let subImageData = new Uint8Array(alignedWidth * alignedHeight * 4); // Assuming 4 bytes per pixel (RGBA)
+    for (let row = 0; row < alignedHeight; row++) {
+        let srcStart = row * textureWidth * 4;
+        let srcEnd = srcStart + alignedWidth * 4;
+        let destStart = row * alignedWidth * 4;
+        subImageData.set(data.subarray(srcStart, srcEnd), destStart);
+    }
+    return subImageData;
+}
+
+function extractBottomHalfTexture(textureData, width, height, blockSize) {
+    // Determine the number of 4x4 blocks in width and height
+    const blocksPerRow = width / 4;
+    const blocksPerColumn = height / 4;
+
+    // Calculate the start row index for the bottom half
+    const startBlockRow = blocksPerColumn / 2;
+    const endBlockRow = blocksPerColumn;
+
+    // Calculate the starting and ending indices in the textureData array
+    const startIndex = startBlockRow * blocksPerRow * blockSize;
+    const endIndex = endBlockRow * blocksPerRow * blockSize;
+
+    // Extract the bottom half texture data
+    const bottomHalfTextureData = textureData.slice(startIndex, endIndex);
+
+    return bottomHalfTextureData;
+}
+
+// Example usage
+
+
+
+// window.selectActiveLayer = selectActiveLayer
 window.equirectangularLayers = equirectangularLayers
 window.cubeLayers = cubeLayers
