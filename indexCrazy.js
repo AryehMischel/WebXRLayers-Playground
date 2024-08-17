@@ -218,7 +218,7 @@ function createCompressedTextureLayer(image) {
 
             console.log("format", texture.format)
             let format = eval(supportedCompressedFormats.get(texture.format))
-
+            console.log("format", format)
 
             if (image.type === "stereoCubeMap") {
                 console.log(`adding other side to stereocube texture ${image.url}`)
@@ -260,8 +260,6 @@ function createCompressedTextureLayer(image) {
             if (image.type === "equirectangular") {
                 console.log("created equirectangular texture, creating webxr layer")
 
-                initializeCompressed(texture.mipmaps[0].width, texture.mipmaps[0].height, texture.mipmaps[0].data.length)
-                // console.log(texture.mipmaps[0].data)
                 let equirectLayer = new WebXREquirectangularLayer(null, texture, false, format, eqrtRadius);
                 equirectangularLayers[image.name] = equirectLayer
                 offset += 0.1;
@@ -314,7 +312,7 @@ let uploadInProgress = false;
 // }
 
 let currentChunk = 0;
-let totalChunks = 1;
+let totalChunks = 2;
 let intermediateTexture = null;
 let width = 4096;   // layer.Equirectangular_Texture.mipmaps[0].width;
 let height = 2048;  // layer.Equirectangular_Texture.mipmaps[0].height;
@@ -343,19 +341,15 @@ function initialize() {
 
 }
 
-function initializeCompressed(width, height, dataSize) {
-    // const dataSize = calculateASTCDataSize(width, height, 4, 4);
-    // console.log(`Data size for ASTC texture: ${dataSize} bytes`);
-    console.log("initializing compressed intermediate texture")
+function initializeCompressed(width, height, format) {
+    const dataSize = calculateASTCDataSize(width, height, 4, 4);
+    console.log(`Data size for ASTC texture: ${dataSize} bytes`);
 
-    // console.log("width", width)
-    // console.log("height", height)
-    // console.log("dataSize", dataSize)
     // Create the placeholder Uint8Array
     let placeholderData = new Uint8Array(dataSize);
     intermediateTexture = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-    gl.compressedTexImage2D(gl.TEXTURE_2D, 0, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, width, height, 0, placeholderData);
+    gl.compressedTexImage2D(gl.TEXTURE_2D, 0, format, width, height, 0, placeholderData);
 
 }
 
@@ -430,7 +424,6 @@ function animate(t, frame) {
     }
 
     if (session && layersToDraw.length > 0) {
-        console.log("keep drawing")
         for (let layer in layersToDraw) {
             if (layersToDraw[layer].layer.needsRedraw) {
                 console.log(layersToDraw[layer].type)
@@ -451,6 +444,7 @@ function animate(t, frame) {
                         layersToDraw.splice(layer, 1);
                     } else {
                         drawEquirectangular(layersToDraw[layer])
+                        layersToDraw.splice(layer, 1);
                     }
                 }
             }
@@ -488,104 +482,24 @@ function animate(t, frame) {
 
     function drawEquirectangular(layer) {
 
-        //     let width = layer.Equirectangular_Texture.mipmaps[0].width;
-        //     let height = layer.Equirectangular_Texture.mipmaps[0].height;
-        //     const compressedData = layer.Equirectangular_Texture.mipmaps[0].data; // Your ASTC 4x4 compressed texture data array
-
-        //     console.log("redrawing");
-
-        //     if (currentChunk < totalChunks) {
-        //         console.log("uploading data to intermediate texture");
-
-        //         let chunkHeight = Math.floor(height / totalChunks);
-        //         let mipSize = getMipSize(width, chunkHeight, ASTC_FORMAT);
-        //         let mipData = compressedData.subarray(currentChunk * mipSize, (currentChunk + 1) * mipSize);
-
-        //         if (!intermediateTexture) {
-        //             intermediateTexture = gl.createTexture();
-        //             gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-        //             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        //             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        //             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        //             gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        //         } else {
-        //             gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-        //         }
-
-        //         gl.compressedTexImage2D(gl.TEXTURE_2D, 0, ASTC_FORMAT, width, chunkHeight, 0, mipData);
-
-        //         currentChunk++;
-        //     } else {
-        //         console.log("transferring data from intermediate texture to layer texture");
-        //         copyDataToLayer(gl, layer, frame, width, height, intermediateTexture);
-        //     }
-
-        //     checkGLError(gl);
-
-        // //original code
-        //     console.log("redrawing stereo equirectangular cube layer")
-        //     let format = eval(layer.format);
-        //     let width = layer.Equirectangular_Texture.mipmaps[0].width;
-        //     let height = layer.Equirectangular_Texture.mipmaps[0].height;
-
-        //     let glayer = glBinding.getSubImage(layer.layer, frame);
-        //     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        //     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-        //     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
-        //     gl.bindTexture(gl.TEXTURE_2D, null);
-
-
-        // if (currentChunk < totalChunks) {
-        //     console.log("uploading data to intermediate texture");
-
-        //     // Step 1: Create a new WebGL texture
-        //     let halfHeight = Math.floor(height / 2);
-        //     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, halfHeight * currentChunk, width, halfHeight, gl.RGBA, gl.UNSIGNED_BYTE, data.subarray(0, width * halfHeight * 4));
-        //     currentChunk++;
-        // } else {
-        //     console.log("transfering data from intermediate texture to layer texture");
-
-        //     // Step 3: Bind the tempTexture to the glayer
-        //     let glayer = glBinding.getSubImage(layer, frame);
-        //     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-        //     let framebuffer = gl.createFramebuffer();
-        //     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        //     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0)
-
-        //     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-        //         console.error("Framebuffer is not complete");
-        //     }
-
-        //     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-        //     gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-
-        //     // Clean up
-        //     gl.bindTexture(gl.TEXTURE_2D, null);
-        //     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        //     gl.deleteFramebuffer(framebuffer);
-        //     gl.deleteTexture(intermediateTexture);
-        // }
         let width = layer.Equirectangular_Texture.mipmaps[0].width;
         let height = layer.Equirectangular_Texture.mipmaps[0].height;
-        const textureData = layer.Equirectangular_Texture.mipmaps[0].data; // Your ASTC 4x4 compressed texture data array
+        console.log(layer.format)
+        let format = eval(layer.format);
+        console.log(format)
+        if (currentChunk === 0) {
+            initializeCompressed(width, height, format)
+            currentChunk++
+        } else if (currentChunk < totalChunks) {
 
-        if (currentChunk < totalChunks) {
-            console.log("uploading data to intermediate texture");
 
-            // Step 1: Create a new WebGL texture
-            // Assuming `compressedData` contains the ASTC compressed data for the current chunk
-            //let compressedData = getCompressedDataForChunk(data, width, halfHeight, currentChunk); // You need to implement this function
+            console.log("starting working on texture")
 
-            gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            const textureData = layer.Equirectangular_Texture.mipmaps[0].data; // Your ASTC 4x4 compressed texture data array
 
+            // Define the portion of the texture you want to copy
             let portionX = 0; // Starting x position, must be multiple of 4
-            let portionY = Math.floor(height / 2);//Math.floor(height / 2); // Starting y position (halfway down), must be multiple of 4
+            let portionY = 0;//Math.floor(height / 2); // Starting y position (halfway down), must be multiple of 4
             portionY = portionY - (portionY % 4); // Adjust to be multiple of 4
             let portionWidth = width; // Width of the portion
             let portionHeight = Math.floor(height / 2); // Height of the portion (half the texture height)
@@ -612,174 +526,27 @@ function animate(t, frame) {
             let portionSize = numBlocksX * numBlocksY * blockSize;
 
             // Extract the portion of the texture data
-            let compressedData = textureData.subarray(byteOffset, byteOffset + portionSize);
+            let portionData = textureData.subarray(byteOffset, byteOffset + portionSize);
 
-            gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX, portionY, portionWidth, portionHeight, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, compressedData);
-            gl.finish();
-            currentChunk++;
-        } else if (currentChunk === totalChunks) {
-            console.log("transferring data from intermediate texture to layer texture");
-            gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
 
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            // Step 3: Bind the tempTexture to the glayer
             let glayer = glBinding.getSubImage(layer.layer, frame);
             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+            gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
 
-            let framebuffer = gl.createFramebuffer();
-            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0);
-    // Ensure all previous GL commands are complete
-    gl.finish();
-            // if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-            //     console.error("Framebuffer is not complete");
-            // }
+            // Upload the portion of the texture data
+            gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX, portionY, portionWidth, portionHeight, format, portionData);
 
-            // Check the framebuffer status
-            const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-
-            if (status !== gl.FRAMEBUFFER_COMPLETE) {
-                switch (status) {
-                    case gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-                        console.error("Framebuffer incomplete: Attachment is not complete.");
-                        break;
-                    case gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-                        console.error("Framebuffer incomplete: No attachments.");
-                        break;
-                    case gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
-                        console.error("Framebuffer incomplete: Attached images must have the same dimensions.");
-                        break;
-                    case gl.FRAMEBUFFER_UNSUPPORTED:
-                        console.error("Framebuffer incomplete: Unsupported framebuffer format.");
-                        break;
-                    default:
-                        console.error("Framebuffer incomplete: Unknown error.");
-                }
-            } else {
-                console.log("Framebuffer is complete.");
-                gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-                gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-
-                // Clean up
-                gl.bindTexture(gl.TEXTURE_2D, null);
-                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-                gl.deleteFramebuffer(framebuffer);
-                gl.deleteTexture(intermediateTexture);
-            }
-
-            currentChunk++;
-
-
-        } else {
-            console.log("Texture upload complete");
-            // Mark the texture as fully loaded
-        }
-        // working sub compressed image
-        // let width = layer.Equirectangular_Texture.mipmaps[0].width;
-        // let height = layer.Equirectangular_Texture.mipmaps[0].height;
-        // let format = eval(layer.format);
-
-        // const textureData = layer.Equirectangular_Texture.mipmaps[0].data; // Your ASTC 4x4 compressed texture data array
-
-        // // Define the portion of the texture you want to copy
-        // let portionX = 0; // Starting x position, must be multiple of 4
-        // let portionY = 0;//Math.floor(height / 2); // Starting y position (halfway down), must be multiple of 4
-        // portionY = portionY - (portionY % 4); // Adjust to be multiple of 4
-        // let portionWidth = width; // Width of the portion
-        // let portionHeight = Math.floor(height / 2); // Height of the portion (half the texture height)
-        // portionHeight = portionHeight - (portionHeight % 4); // Adjust to be multiple of 4
-
-        // // Get the block size for the format
-        // const blockSize = 16;
-
-        // if (blockSize === 0) {
-        //     console.error('Unsupported texture format:', format);
-        //     return;
-        // }
-
-        // // Calculate the number of blocks in the portion
-        // let numBlocksX = Math.ceil(portionWidth / 4);
-        // let numBlocksY = Math.ceil(portionHeight / 4);
-
-        // // Calculate the byte offset for the starting position
-        // let startBlockX = Math.floor(portionX / 4);
-        // let startBlockY = Math.floor(portionY / 4);
-        // let byteOffset = (startBlockY * Math.ceil(width / 4) + startBlockX) * blockSize;
-
-        // // Calculate the size of the portion in bytes
-        // let portionSize = numBlocksX * numBlocksY * blockSize;
-
-        // // Extract the portion of the texture data
-        // let portionData = textureData.subarray(byteOffset, byteOffset + portionSize);
-
-
-        // let glayer = glBinding.getSubImage(layer.layer, frame);
-        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-
-        // // Upload the portion of the texture data
-        // gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX, portionY, portionWidth, portionHeight, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, portionData);
-
-        // gl.bindTexture(gl.TEXTURE_2D, null);
-
-
-
-
-
-    }
-
-    function copyDataToLayer(gl, layer, frame, width, height, intermediateTexture) {
-        let glayer = glBinding.getSubImage(layer, frame);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-        let framebuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0);
-
-        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-            console.error("Framebuffer is not complete");
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            currentChunk++
         }
 
-        gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-        gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
 
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.deleteFramebuffer(framebuffer);
 
-        checkGLError(gl);
+
+
     }
 
 
-    function getMipSize(width, height) {
-        let blockSize = 16;
-        let blockWidth = Math.ceil(width / 4);
-        let blockHeight = Math.ceil(height / 4);
-        return blockWidth * blockHeight * blockSize;
-    }
-
-    function checkGLError(gl) {
-        let error = gl.getError();
-        if (error !== gl.NO_ERROR) {
-            console.error("WebGL Error: ", error);
-        }
-    }
-
-
-
-    function transferTextureToLayer(texture, width, height, format) {
-        // Bind the layer's texture
-        gl.bindTexture(gl.TEXTURE_2D, layer.Equirectangular_Texture);
-
-        // Transfer the data from the intermediate texture to the layer texture
-        gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, layer.Equirectangular_Texture.mipmaps[0].data);
-
-        // Clean up
-        gl.bindTexture(gl.TEXTURE_2D, null);
-    }
 
 
     function drawStereoCube(layer) {
