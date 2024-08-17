@@ -7,7 +7,7 @@ import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFa
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { getGLBinding, getXRSpace } from './index.js';
+import { getGLBinding, getXRSpace } from './indext.js';
 
 let sceneInstance = null;
 let glBinding = null;
