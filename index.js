@@ -89,37 +89,36 @@ let sources = [
 ]
 
 const img = new Image();
-img.src = 'textures/image.jpg';
+img.src = 'textures/compressed360Stereo/sources/bf2.jpg';
 
-let data;
-let rgba;
+let data = [];
+const CHUNK_SIZE = 2048; // Define a chunk size that is within the browser's canvas size limit
 
 img.onload = () => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
+    console.log("img", img.width, img.height)
+    const chunksX = Math.ceil(img.width / CHUNK_SIZE);
+    const chunksY = Math.ceil(img.height / CHUNK_SIZE);
 
-    canvas.width = img.width;
-    canvas.height = img.height;
+    for (let y = 0; y < chunksY; y++) {
+        for (let x = 0; x < chunksX; x++) {
+            const startX = x * CHUNK_SIZE;
+            const startY = y * CHUNK_SIZE;
+            const width = Math.min(CHUNK_SIZE, img.width - startX);
+            const height = Math.min(CHUNK_SIZE, img.height - startY);
 
-    ctx.drawImage(img, 0, 0);
+            canvas.width = width;
+            canvas.height = height;
 
-    // Get RGB data
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    data = imageData.data; // This is a Uint8ClampedArray
+            ctx.drawImage(img, startX, startY, width, height, 0, 0, width, height);
 
-    console.log(data)
-    // Access RGB values
-    //   for (let i = 0; i < data.length; i += 4) {
-    //     const red = data[i];
-    //     const green = data[i + 1];
-    //     const blue = data[i + 2];
-    //     const alpha = data[i + 3]; // Optional: you can also access the alpha channel
+            const imageData = ctx.getImageData(0, 0, width, height);
+            data.push(...imageData.data);
+        }
+    }
 
-    //     // Do something with the RGB values (e.g., print them)
-
-    //   }
-
-
+    console.log(data);
 };
 let layer = null;
 
@@ -131,8 +130,8 @@ function makeLayer() {
 
     layer = glBinding.createEquirectLayer({
         space: xrSpace,
-        viewPixelWidth: 4096,
-        viewPixelHeight: 2048,
+        viewPixelWidth: 8192,
+        viewPixelHeight: 8192 / 2,
         layout: "mono",
         colorFormat: gl.RGBA,
         isStatic: "true",
@@ -316,8 +315,8 @@ let uploadInProgress = false;
 let currentChunk = 0;
 let totalChunks = 1;
 let intermediateTexture = null;
-let width = 4096;   // layer.Equirectangular_Texture.mipmaps[0].width;
-let height = 2048;  // layer.Equirectangular_Texture.mipmaps[0].height;
+let width = 8192;   // layer.Equirectangular_Texture.mipmaps[0].width;
+let height = 8192 ;  // layer.Equirectangular_Texture.mipmaps[0].height;
 
 
 function calculateASTCDataSize(textureWidth, textureHeight, blockWidth, blockHeight) {
@@ -383,37 +382,49 @@ function animate(t, frame) {
     }
 
     if (session && layer && layer.needsRedraw) {
-        console.log("redrawing");
-        if (currentChunk < totalChunks) {
-            console.log("uploading data to intermediate texture");
 
-            // Step 1: Create a new WebGL texture
-            let halfHeight = Math.floor(height / 2);
-            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, halfHeight * currentChunk, width, halfHeight, gl.RGBA, gl.UNSIGNED_BYTE, data.subarray(0, width * halfHeight * 4));
-            currentChunk++;
-        } else {
-            console.log("transfering data from intermediate texture to layer texture");
 
-            // Step 3: Bind the tempTexture to the glayer
-            let glayer = glBinding.getSubImage(layer, frame);
+            // let format = eval(layer.format);
+            // let width = layer.Equirectangular_Texture.mipmaps[0].width;
+            // let height = layer.Equirectangular_Texture.mipmaps[0].height;
+
+            let glayer = glBinding.getSubImage(layer.layer, frame);
             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-            let framebuffer = gl.createFramebuffer();
-            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0)
-
-            if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-                console.error("Framebuffer is not complete");
-            }
-
             gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-            gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-
-            // Clean up
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
             gl.bindTexture(gl.TEXTURE_2D, null);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl.deleteFramebuffer(framebuffer);
-            gl.deleteTexture(intermediateTexture);
+        
+        // console.log("redrawing");
+        // if (currentChunk < totalChunks) {
+        //     console.log("uploading data to intermediate texture");
+
+        //     // Step 1: Create a new WebGL texture
+        //     let halfHeight = Math.floor(height / 2);
+        //     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, halfHeight * currentChunk, width, halfHeight, gl.RGBA, gl.UNSIGNED_BYTE, data.subarray(0, width * halfHeight * 4));
+        //     currentChunk++;
+        // } else {
+        //     console.log("transfering data from intermediate texture to layer texture");
+
+        //     // Step 3: Bind the tempTexture to the glayer
+        //     let glayer = glBinding.getSubImage(layer, frame);
+        //     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+        //     let framebuffer = gl.createFramebuffer();
+        //     gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+        //     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0)
+
+        //     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+        //         console.error("Framebuffer is not complete");
+        //     }
+
+        //     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+        //     gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+
+        //     // Clean up
+        //     gl.bindTexture(gl.TEXTURE_2D, null);
+        //     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        //     gl.deleteFramebuffer(framebuffer);
+        //     gl.deleteTexture(intermediateTexture);
         }
 
 
