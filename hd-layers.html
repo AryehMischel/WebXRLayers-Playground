@@ -51,6 +51,11 @@
             
         <p> update this is only the case with rgba layers compressed layers have no intial hit regardless of size. Test half dome approach to large astc texture </p>
         
+        <p> half dome still results in jank . next step performance test. then try drawing small chunk of astc layer</p>
+
+        <p> interesting finding with astc chunks. When they are small enough it can be drawn to layer without jank. Chunks are currently 1/8 the size of layer image</p>
+
+        <p> see if we can acces glayer outside of needs redraw</p>
         
         
        

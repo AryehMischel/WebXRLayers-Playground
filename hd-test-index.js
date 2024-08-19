@@ -24,6 +24,7 @@ let layersToDraw = []
 let layersOBJ = new Object();
 
 
+
 const htmlContent = document.querySelector('#html-content');
 //create scene, add lights and some geometry
 scene = new THREE.Scene();
@@ -76,7 +77,7 @@ let sources = [
     // { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
     // { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
 
-    { name: "Gemini", url: 'textures/compressed360Stereo/bfleft.ktx2', type: "equirectangular" },
+    { name: "Gemini", url: 'textures/compressed360Stereo/bf4.ktx2', type: "equirectangular" },
 ]
 
 const img = new Image();
@@ -188,17 +189,19 @@ let dataBottomRight;
 
 
 
-
 let layer = null;
-let width = 7168;
-let height = 7168;
-
+let width = 8192;
+let height = 8192;
+function setRedraw() {
+    needsRedraw = true
+}
+window.setRedraw = setRedraw
 function makeLayer() {
 
     layer = glBinding.createEquirectLayer({
         space: xrSpace,
-        viewPixelWidth: 4096,//3584,
-        viewPixelHeight: 4096,///8192/2,//3584, //3584
+        viewPixelWidth: 8192,//4096,//3584,
+        viewPixelHeight: 4096,//8192,//4096,///8192/2,//3584, //3584
         layout: "stereo-top-bottom",
         colorFormat: ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR,
         isStatic: "false",
@@ -206,7 +209,7 @@ function makeLayer() {
 
     });
 
-    layer.centralHorizontalAngle = Math.PI * 1;
+    layer.centralHorizontalAngle = Math.PI * 2;
     layer.upperVerticalAngle = -Math.PI / 2.0;
     layer.lowerVerticalAngle = Math.PI / 2.0;
     layer.radius = 40;
@@ -222,57 +225,6 @@ function makeLayer() {
 }
 
 window.makeLayer = makeLayer
-
-
-function Framebuffer() {
-
-    gl.finish();
-
-    let framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0);
-    // Ensure all previous GL commands are complete
-
-    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
-        gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-        console.log("looking good")
-    } else {
-        console.error("Framebuffer is not complete.");
-    }
-
-    gl.finish();
-
-    // Check the framebuffer status
-    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-
-    if (status !== gl.FRAMEBUFFER_COMPLETE) {
-        switch (status) {
-            case gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-                console.error("Framebuffer incomplete: Attachment is not complete.");
-                break;
-            case gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-                console.error("Framebuffer incomplete: No attachments.");
-                break;
-            case gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
-                console.error("Framebuffer incomplete: Attached images must have the same dimensions.");
-                break;
-            case gl.FRAMEBUFFER_UNSUPPORTED:
-                console.error("Framebuffer incomplete: Unsupported framebuffer format.");
-                break;
-            default:
-                console.error("Framebuffer incomplete: Unknown error.");
-        }
-    } else {
-        console.log("Framebuffer is complete.");
-        // // Clean up
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.deleteFramebuffer(framebuffer);
-
-    }
-}
-
-window.Framebuffer = Framebuffer
 
 
 //webgl context
@@ -295,6 +247,113 @@ const supportedCompressedFormats = new Map([
 
 ]);
 
+
+let portionX;
+let portionY;
+let portionWidth;
+let portionHeight;
+let portionData;
+
+function cropASTC(){
+    console.log(height, width)
+    console.log(data.length)
+    const textureData = data; // Your ASTC 4x4 compressed texture data array
+
+    // Define the portion of the texture you want to copy
+    portionX = 0; // Starting x position, must be multiple of 4
+    portionY = 0;//Math.floor(height / 2); // Starting y position (halfway down), must be multiple of 4
+    portionY = portionY - (portionY % 4); // Adjust to be multiple of 4
+    portionWidth = Math.floor(width / 4); // Width of the portion
+    portionWidth = portionWidth - (portionWidth % 4); // Adjust to be multiple of 4
+    portionHeight = Math.floor(height / 4); // Height of the portion (half the texture height)
+    portionHeight = portionHeight - (portionHeight % 4); // Adjust to be multiple of 4
+
+    // Get the block size for the format
+    const blockSize = 16;
+
+    if (blockSize === 0) {
+        console.error('Unsupported texture format:', format);
+        return;
+    }
+
+    // Calculate the number of blocks in the portion
+    let numBlocksX = Math.ceil(portionWidth / 4);
+    let numBlocksY = Math.ceil(portionHeight / 4);
+
+    // Calculate the byte offset for the starting position
+    let startBlockX = Math.floor(portionX / 4);
+    let startBlockY = Math.floor(portionY / 4);
+    let byteOffset = (startBlockY * Math.ceil(width / 4) + startBlockX) * blockSize;
+
+    // Calculate the size of the portion in bytes
+    let portionSize = numBlocksX * numBlocksY * blockSize;
+
+    // Extract the portion of the texture data
+    portionData = textureData.subarray(byteOffset, byteOffset + portionSize);
+
+    console.log('done')
+    console.log(portionData.length)
+    console.log(portionData)
+    console.log(portionX, portionY, portionWidth, portionHeight)
+    // let glayer = glBinding.getSubImage(layer.layer, frame);
+    // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+
+    // Upload the portion of the texture data
+    // gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX, portionY, portionWidth, portionHeight, format, portionData);
+
+    // gl.bindTexture(gl.TEXTURE_2D, null);
+}
+
+
+let portionX_;
+let portionY_;
+let portionWidth_;
+let portionHeight_;
+let portionData_;
+
+function cropOther(){
+    const textureData = data; // Your ASTC 4x4 compressed texture data array
+
+    // Define the portion of the texture you want to copy
+    portionX_ = 0; // Starting x position, must be multiple of 4
+    portionY_ = Math.floor(height / 2);//Math.floor(height / 2); // Starting y position (halfway down), must be multiple of 4
+    portionY_ = portionY_ - (portionY_ % 4); // Adjust to be multiple of 4
+    portionWidth_ = Math.floor(width / 4); // Width of the portion
+    portionWidth_ = portionWidth_ - (portionWidth_ % 4); // Adjust to be multiple of 4
+    portionHeight_ = Math.floor(height / 4); // Height of the portion (half the texture height)
+    portionHeight_ = portionHeight_ - (portionHeight_ % 4); // Adjust to be multiple of 4
+
+    // Get the block size for the format
+    const blockSize = 16;
+
+    if (blockSize === 0) {
+        console.error('Unsupported texture format:', format);
+        return;
+    }
+
+    // Calculate the number of blocks in the portion
+    let numBlocksX = Math.ceil(portionWidth_ / 4);
+    let numBlocksY = Math.ceil(portionHeight_ / 4);
+
+    // Calculate the byte offset for the starting position
+    let startBlockX = Math.floor(portionX_ / 4);
+    let startBlockY = Math.floor(portionY_ / 4);
+    let byteOffset = (startBlockY * Math.ceil(width / 4) + startBlockX) * blockSize;
+
+    // Calculate the size of the portion in bytes
+    let portionSize = numBlocksX * numBlocksY * blockSize;
+
+    // Extract the portion of the texture data
+    portionData_ = textureData.subarray(byteOffset, byteOffset + portionSize);
+
+    console.log('done')
+
+
+}
+
+window.cropASTC = cropASTC
+window.cropOther = cropOther
 
 
 //this is only necessary for gpu restricted devices. In fact this approach may only be necessary for those devices that support webxr layers
@@ -398,15 +457,34 @@ function animate(t, frame) {
         });
 
     }
+    if(needsRedraw){
+        
+        console.log('this wont end well')
+        console.log(layer)
+
+        //compressed texture test
+        
+  
+        // let width = activeWebXRLayer.Equirectangular_Texture.mipmaps[0].width;
+        // let height = activeWebXRLayer.Equirectangular_Texture.mipmaps[0].height;
+        let glayer = glBinding.getSubImage(layer, frame);
+        // let glayer = glBinding.getSubImage(activeWebXRLayer.layer, frame);
+        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+        // // gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX_, portionY_, portionWidth_, portionHeight_, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, portionData_);
+        // gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 4096, 8192, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, data);
+        // gl.bindTexture(gl.TEXTURE_2D, null);
+        needsRedraw = false;
+    }
 
     if (session && layer && layer.needsRedraw) {
-
+        console.log(layer)
         // let glayer = glBinding.getSubImage(layer, frame);
         // let glayer = glBinding.getSubImage(layer, frame, 'left');
         // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
         //  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width/2, height/2, gl.RGBA,gl.UNSIGNED_BYTE, dataTopLeft);
-        gl.bindTexture(gl.TEXTURE_2D, null);
+        // gl.bindTexture(gl.TEXTURE_2D, null);
 
         // glayer = glBinding.getSubImage(layer, frame, 'left');
         // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
@@ -448,7 +526,10 @@ function animate(t, frame) {
         // let glayer = glBinding.getSubImage(activeWebXRLayer.layer, frame);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-        gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 4096, 8192, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, data);
+        // gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX_, portionY_, portionWidth_, portionHeight_, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, portionData_);
+
+        gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX, portionY, portionWidth, portionHeight, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, portionData);
+        // gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 4096, 8192, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, data);
         gl.bindTexture(gl.TEXTURE_2D, null);
 
 
