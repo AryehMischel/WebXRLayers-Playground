@@ -76,78 +76,114 @@ let sources = [
     // { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
     // { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
 
-    // { name: "Gemini", url: 'textures/compressed360Stereo/sources/bf2.jpg', type: "equirectangular" },
-
+    { name: "Gemini", url: 'textures/compressed360Stereo/bfleft.ktx2', type: "equirectangular" },
 ]
 
 const img = new Image();
 img.src = 'textures/compressed360Stereo/sources/bf2.jpg';
-
 let data;
-let rgba;
+let dataTopLeft;
+let dataTopRight;
+let dataBottomLeft;
+let dataBottomRight;
 
+// const textureLoader = new THREE.TextureLoader();
+// textureLoader.load('textures/compressed360Stereo/sources/bf2.jpg', (texture) => {
+//     const img = texture.image;
 
-const textureLoader = new THREE.TextureLoader();
-textureLoader.load('textures/compressed360Stereo/sources/bf2.jpg', (texture) => {
-    const img = texture.image;
-
-    // Create a canvas and draw the texture onto it
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-
-    canvas.width = img.width;
-    canvas.height = img.height;
-
-    console.log(img.height)
-    console.log(img.width)
-
-    ctx.drawImage(img, 0, 0);
-
-    // Get RGBA data
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    data = imageData.data; // This is a Uint8ClampedArray
-
-    console.log(data);
-
-    // Access RGBA values
-    // for (let i = 0; i < data.length; i += 4) {
-    //     const red = data[i];
-    //     const green = data[i + 1];
-    //     const blue = data[i + 2];
-    //     const alpha = data[i + 3]; // Optional: you can also access the alpha channel
-    //     // Do something with the RGBA values (e.g., print them)
-    // }
-});
-
-
-// img.onload = () => {
+//     // Create a canvas and draw the texture onto it
 //     const canvas = document.createElement('canvas');
 //     const ctx = canvas.getContext('2d');
 
-//     canvas.width = img.naturalWidth;
-//     canvas.height = img.naturalHeight;
+//     canvas.width = img.width;
+//     canvas.height = img.height;
 
+//     console.log(img.height);
+//     console.log(img.width);
 
 //     ctx.drawImage(img, 0, 0);
 
-//     // Get RGB data
+//     // Get RGBA data
 //     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-//     data = imageData.data; // This is a Uint8ClampedArray
+//     const data = imageData.data; // This is a Uint8ClampedArray
 
-//     // console.log(data)
-//     // Access RGB values
-//     //   for (let i = 0; i < data.length; i += 4) {
-//     //     const red = data[i];
-//     //     const green = data[i + 1];
-//     //     const blue = data[i + 2];
-//     //     const alpha = data[i + 3]; // Optional: you can also access the alpha channel
+//     // Calculate the number of pixels in each quarter
+//     const halfWidth = Math.floor(canvas.width / 2);
+//     const halfHeight = Math.floor(canvas.height / 2);
+//     const quarterPixels = halfWidth * halfHeight * 4; // 4 bytes per pixel (RGBA)
 
-//     //     // Do something with the RGB values (e.g., print them)
+//     // Split the data into four equal parts
+//     dataTopLeft = new Uint8ClampedArray(quarterPixels);
+//     dataTopRight = new Uint8ClampedArray(quarterPixels);
+//     dataBottomLeft = new Uint8ClampedArray(quarterPixels);
+//     dataBottomRight = new Uint8ClampedArray(quarterPixels);
 
-//     //   }
+//     for (let y = 0; y < canvas.height; y++) {
+//         for (let x = 0; x < canvas.width; x++) {
+//             const pixelIndex = (y * canvas.width + x) * 4;
+//             const quarterIndex = ((y % halfHeight) * halfWidth + (x % halfWidth)) * 4;
+
+//             if (y < halfHeight && x < halfWidth) {
+//                 dataTopLeft.set(data.slice(pixelIndex, pixelIndex + 4), quarterIndex);
+//             } else if (y < halfHeight && x >= halfWidth) {
+//                 dataTopRight.set(data.slice(pixelIndex, pixelIndex + 4), quarterIndex);
+//             } else if (y >= halfHeight && x < halfWidth) {
+//                 dataBottomLeft.set(data.slice(pixelIndex, pixelIndex + 4), quarterIndex);
+//             } else {
+//                 dataBottomRight.set(data.slice(pixelIndex, pixelIndex + 4), quarterIndex);
+//             }
+//         }
+//     }
+
+//     console.log(dataTopLeft);
+//     console.log(dataTopRight);
+//     console.log(dataBottomLeft);
+//     console.log(dataBottomRight);
+// });
+
+// //simple solution for now. Manu
+// let dataLeft;
+// let dataMiddleLeft;
+// let dataMiddleRight;
+// let dataRight;
+
+// const textureLoader = new THREE.TextureLoader();
+// textureLoader.load('textures/compressed360Stereo/sources/bf2.jpg', (texture) => {
+//     const img = texture.image;
+
+//     // Create a canvas and draw the texture onto it
+//     const canvas = document.createElement('canvas');
+//     const ctx = canvas.getContext('2d');
+
+//     canvas.width = img.width;
+//     canvas.height = img.height;
+
+//     console.log(img.height);
+//     console.log(img.width);
+
+//     ctx.drawImage(img, 0, 0);
+
+//     // Get RGBA data
+//     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+//     const data = imageData.data; // This is a Uint8ClampedArray
+
+//     // Calculate the number of pixels in each quarter
+//     const quarterHeight = Math.floor(canvas.height / 4);
+//     const quarterPixels = quarterHeight * canvas.width * 4; // 4 bytes per pixel (RGBA)
+
+//     // Split the data into four equal parts
+//     dataTop = new Uint8ClampedArray(data.slice(0, quarterPixels));
+//     dataMiddleTop = new Uint8ClampedArray(data.slice(quarterPixels, 2 * quarterPixels));
+//     dataMiddleBottom = new Uint8ClampedArray(data.slice(2 * quarterPixels, 3 * quarterPixels));
+//     dataBottom = new Uint8ClampedArray(data.slice(3 * quarterPixels));
+
+//     console.log(dataTop);
+//     console.log(dataMiddleTop);
+//     console.log(dataMiddleBottom);
+//     console.log(dataBottom);
+// });
 
 
-// };
 
 
 
@@ -158,21 +194,19 @@ let width = 7168;
 let height = 7168;
 
 function makeLayer() {
-    // let layer = new WebXREquirectangularLayer(null, texture, true, "gl.RGBA", eqrtRadius);
-    // Method to create the WebXR layer
 
     layer = glBinding.createEquirectLayer({
         space: xrSpace,
-        viewPixelWidth: 7168,
-        viewPixelHeight: 7168 / 2,
+        viewPixelWidth: 4096,//3584,
+        viewPixelHeight: 4096,///8192/2,//3584, //3584
         layout: "stereo-top-bottom",
-        colorFormat: gl.RGBA,
-        isStatic: "true",
+        colorFormat: ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR,
+        isStatic: "false",
 
 
     });
 
-    layer.centralHorizontalAngle = Math.PI * 2;
+    layer.centralHorizontalAngle = Math.PI * 1;
     layer.upperVerticalAngle = -Math.PI / 2.0;
     layer.lowerVerticalAngle = Math.PI / 2.0;
     layer.radius = 40;
@@ -184,69 +218,10 @@ function makeLayer() {
             xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
         ]
     });
-    // xrSession.updateRenderState({
-    //     layers: [
-    //         layer,
-    //         xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-    //     ]
-    // });
-
-    // layersToDraw.push(layer)
-    // layers.push(layer)
-    // layersOBJ["image"] = layer
-    // offset -= 0.1;
-    // createButton(`show image`, () => { selectActiveLayerByName("image") }, 0.2, offset)
+ 
 }
 
 window.makeLayer = makeLayer
-function attachToBuffer() {
-    gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-    let framebuffer = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, window.intermediateTexture, 0);
-    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
-        gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-        console.log("looking good")
-    } else {
-        console.error("Framebuffer is not complete.");
-    }
-}
-window.attachToBuffer = attachToBuffer
-
-function makeTexture(width, height, dataSize, textureData) {
-    data = textureData;
-    console.log("initializing compressed intermediate texture");
-    let placeholderData = new Uint8Array(dataSize);
-    intermediateTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-    gl.compressedTexImage2D(gl.TEXTURE_2D, 0, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, width, height, 0, placeholderData);
-
-    let error = gl.getError();
-    if (error !== gl.NO_ERROR) {
-        console.error("Error creating compressed texture:", error);
-    }
-
-    // Ensure all previous GL commands are complete
-    gl.finish();
-
-    // Update the texture with actual data
-    gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-    gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, textureData);
-
-
-    error = gl.getError();
-    if (error !== gl.NO_ERROR) {
-        console.error("Error populating compressed texture:", error);
-    }
-    // Ensure all previous GL commands are complete
-    gl.finish();
-
-    needsRedraw = true;
-
-
-
-}
 
 
 function Framebuffer() {
@@ -298,18 +273,6 @@ function Framebuffer() {
 }
 
 window.Framebuffer = Framebuffer
-
-// gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-// gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-
-// // Clean up
-// gl.bindTexture(gl.TEXTURE_2D, null);
-// gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-// gl.deleteFramebuffer(framebuffer);
-// gl.deleteTexture(intermediateTexture);
-// { name: "bf4_1", url: 'textures/compressed360Stereo/bf4_uastc_1.ktx2', type: "stereoEquirectangular" },
-// { name: "bf4_2", url: 'textures/compressed360Stereo/bf4_uastc_2.ktx2', type: "stereoEquirectangular" },
-// { name: "bf4_3", url: 'textures/compressed360Stereo/bf4_uastc_3.ktx2', type: "stereoEquirectangular" },
 
 
 //webgl context
@@ -369,11 +332,10 @@ function createCompressedTextureLayer(image) {
             if (image.type === "equirectangular") {
                 console.log("created equirectangular texture, creating webxr layer")
                 // initializeCompressed(texture.mipmaps[0].width, texture.mipmaps[0].height, texture.mipmaps[0].data.length)
-
-                // makeTexture(texture.mipmaps[0].width, texture.mipmaps[0].height, texture.mipmaps[0].data.length, texture.mipmaps[0].data)
-                let equirectLayer = new WebXREquirectangularLayer(null, texture, false, format, eqrtRadius);
-                equirectangularLayers[image.name] = equirectLayer
-                offset += 0.1;
+                data = texture.mipmaps[0].data;
+                // let equirectLayer = new WebXREquirectangularLayer(null, texture, false, format, eqrtRadius);
+                // equirectangularLayers[image.name] = equirectLayer
+                // offset += 0.1;
                 // createButton(image.name + " create layer", () => { createEquirectangularLayer(image.name, equirectangularLayers) }, 0, offset)
 
             }
@@ -408,66 +370,11 @@ function initialize() {
 // console.log(data)
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, data);
     gl.finish();
-    // let framebuffer = gl.createFramebuffer();
-    // gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-    // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0);
-    // // Ensure all previous GL commands are complete
 
-    // if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
-    //     gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-    //     console.log("looking good")
-    // } else {
-    //     console.error("Framebuffer is not complete.");
-    // }
-
-    // gl.finish();
-
-    // // Check the framebuffer status
-    // const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-
-    // if (status !== gl.FRAMEBUFFER_COMPLETE) {
-    //     switch (status) {
-    //         case gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-    //             console.error("Framebuffer incomplete: Attachment is not complete.");
-    //             break;
-    //         case gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-    //             console.error("Framebuffer incomplete: No attachments.");
-    //             break;
-    //         case gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
-    //             console.error("Framebuffer incomplete: Attached images must have the same dimensions.");
-    //             break;
-    //         case gl.FRAMEBUFFER_UNSUPPORTED:
-    //             console.error("Framebuffer incomplete: Unsupported framebuffer format.");
-    //             break;
-    //         default:
-    //             console.error("Framebuffer incomplete: Unknown error.");
-    //     }
-    // } else {
-    //     console.log("Framebuffer is complete.");
-    //             // // Clean up
-    //     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    //     gl.bindTexture(gl.TEXTURE_2D, null);
-    //     gl.deleteFramebuffer(framebuffer);
-
-    // }
 
 }
 
-function initializeCompressed(width, height, dataSize) {
-    console.log("initializing compressed intermediate texture")
 
-    // console.log("width", width)
-    // console.log("height", height)
-    // console.log("dataSize", dataSize)
-    // Create the placeholder Uint8Array
-    let placeholderData = new Uint8Array(dataSize);
-    intermediateTexture = gl.createTexture();
-    gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-    gl.compressedTexImage2D(gl.TEXTURE_2D, 0, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, width, height, 0, placeholderData);
-
-    gl.finish();
-
-}
 
 window.initialize = initialize
 //animation loop
@@ -476,6 +383,7 @@ function animate(t, frame) {
     const xr = renderer.xr;
     const session = xr.getSession();
     xrSession = session;
+    
     if (session && session.renderState.layers !== undefined && session.hasMediaLayer === undefined) {
 
         console.log("creating media layer")
@@ -493,32 +401,55 @@ function animate(t, frame) {
 
     if (session && layer && layer.needsRedraw) {
 
-        let glayer = glBinding.getSubImage(layer, frame);
-
-        let framebuffer = gl.createFramebuffer();
-        gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0);
-        // Ensure all previous GL commands are complete
-        console.log(intermediateTexture)
-
-        if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
-            console.log("looking good")
-        } else {
-            console.error("Framebuffer is not complete.");
-        }
-
-
-        gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-        
-        // Copy the texture data from the framebuffer to the glayer texture
-        gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // let glayer = glBinding.getSubImage(layer, frame);
+        // let glayer = glBinding.getSubImage(layer, frame, 'left');
+        // gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+        //  gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width/2, height/2, gl.RGBA,gl.UNSIGNED_BYTE, dataTopLeft);
         gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.deleteFramebuffer(framebuffer);
+
+        // glayer = glBinding.getSubImage(layer, frame, 'left');
+        // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+
+        // gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width/2, height/2, gl.RGBA,gl.UNSIGNED_BYTE, dataTopLeft);
+        // gl.bindTexture(gl.TEXTURE_2D, null);
+
+        // let framebuffer = gl.createFramebuffer();
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+        // gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0);
+        // // Ensure all previous GL commands are complete
+        // console.log(intermediateTexture)
+
+        // if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE) {
+        //     console.log("looking good")
+        // } else {
+        //     console.error("Framebuffer is not complete.");
+        // }
+
+
+        // gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+        
+        // // Copy the texture data from the framebuffer to the glayer texture
+        // // gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
+
+        // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        // gl.bindTexture(gl.TEXTURE_2D, null);
+        // gl.deleteFramebuffer(framebuffer);
 
 
         console.log('all is well that ends well')
+
+        //compressed texture test
+        
+  
+        // let width = activeWebXRLayer.Equirectangular_Texture.mipmaps[0].width;
+        // let height = activeWebXRLayer.Equirectangular_Texture.mipmaps[0].height;
+        let glayer = glBinding.getSubImage(layer, frame);
+        // let glayer = glBinding.getSubImage(activeWebXRLayer.layer, frame);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+        gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 4096, 8192, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, data);
+        gl.bindTexture(gl.TEXTURE_2D, null);
 
 
     }
@@ -536,121 +467,6 @@ function animate(t, frame) {
         gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
         gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, format, data);
         gl.bindTexture(gl.TEXTURE_2D, null);
-
-        //     let width = layer.Equirectangular_Texture.mipmaps[0].width;
-        //     let height = layer.Equirectangular_Texture.mipmaps[0].height;
-        //     const textureData = layer.Equirectangular_Texture.mipmaps[0].data; // Your ASTC 4x4 compressed texture data array
-
-        //     if (currentChunk < totalChunks) {
-        //         console.log("uploading data to intermediate texture");
-
-        //         // Step 1: Create a new WebGL texture
-        //         // Assuming `compressedData` contains the ASTC compressed data for the current chunk
-        //         //let compressedData = getCompressedDataForChunk(data, width, halfHeight, currentChunk); // You need to implement this function
-
-        //         gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-        //         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        //         // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        //         // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        //         // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        //         // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-
-        //         let portionX = 0; // Starting x position, must be multiple of 4
-        //         let portionY = Math.floor(height / 2);//Math.floor(height / 2); // Starting y position (halfway down), must be multiple of 4
-        //         portionY = portionY - (portionY % 4); // Adjust to be multiple of 4
-        //         let portionWidth = width; // Width of the portion
-        //         let portionHeight = Math.floor(height / 2); // Height of the portion (half the texture height)
-        //         portionHeight = portionHeight - (portionHeight % 4); // Adjust to be multiple of 4
-
-        //         // Get the block size for the format
-        //         const blockSize = 16;
-
-        //         if (blockSize === 0) {
-        //             console.error('Unsupported texture format:', format);
-        //             return;
-        //         }
-
-        //         // Calculate the number of blocks in the portion
-        //         let numBlocksX = Math.ceil(portionWidth / 4);
-        //         let numBlocksY = Math.ceil(portionHeight / 4);
-
-        //         // Calculate the byte offset for the starting position
-        //         let startBlockX = Math.floor(portionX / 4);
-        //         let startBlockY = Math.floor(portionY / 4);
-        //         let byteOffset = (startBlockY * Math.ceil(width / 4) + startBlockX) * blockSize;
-
-        //         // Calculate the size of the portion in bytes
-        //         let portionSize = numBlocksX * numBlocksY * blockSize;
-
-        //         // Extract the portion of the texture data
-        //         let compressedData = textureData.subarray(byteOffset, byteOffset + portionSize);
-
-        //         gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, portionX, portionY, portionWidth, portionHeight, ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR, compressedData);
-        //         gl.finish();
-        //         currentChunk++;
-        //     } else if (currentChunk === totalChunks) {
-        //         console.log("transferring data from intermediate texture to layer texture");
-        //         gl.bindTexture(gl.TEXTURE_2D, intermediateTexture);
-
-        //         // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-        //         // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-        //         // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        //         // gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        //         // Step 3: Bind the tempTexture to the glayer
-        //         let glayer = glBinding.getSubImage(layer.layer, frame);
-        //         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-
-        //         let framebuffer = gl.createFramebuffer();
-        //         gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-        //         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, intermediateTexture, 0);
-        // // Ensure all previous GL commands are complete
-        // gl.finish();
-        //         // if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
-        //         //     console.error("Framebuffer is not complete");
-        //         // }
-
-        //         // Check the framebuffer status
-        //         const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-
-        //         if (status !== gl.FRAMEBUFFER_COMPLETE) {
-        //             switch (status) {
-        //                 case gl.FRAMEBUFFER_INCOMPLETE_ATTACHMENT:
-        //                     console.error("Framebuffer incomplete: Attachment is not complete.");
-        //                     break;
-        //                 case gl.FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT:
-        //                     console.error("Framebuffer incomplete: No attachments.");
-        //                     break;
-        //                 case gl.FRAMEBUFFER_INCOMPLETE_DIMENSIONS:
-        //                     console.error("Framebuffer incomplete: Attached images must have the same dimensions.");
-        //                     break;
-        //                 case gl.FRAMEBUFFER_UNSUPPORTED:
-        //                     console.error("Framebuffer incomplete: Unsupported framebuffer format.");
-        //                     break;
-        //                 default:
-        //                     console.error("Framebuffer incomplete: Unknown error.");
-        //             }
-        //         } else {
-        //             console.log("Framebuffer is complete.");
-        //             gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-        //             gl.copyTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 0, 0, width, height);
-
-        //             // Clean up
-        //             gl.bindTexture(gl.TEXTURE_2D, null);
-        //             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        //             gl.deleteFramebuffer(framebuffer);
-        //             gl.deleteTexture(intermediateTexture);
-        //         }
-
-        //         currentChunk++;
-
-
-        //     } else {
-        //         console.log("Texture upload complete");
-        //         // Mark the texture as fully loaded
-        //     }
-
-
-
     }
 
 
@@ -664,18 +480,6 @@ function animate(t, frame) {
 
 
 
-
-
-
-
-function checkGLError(gl) {
-    let error = gl.getError();
-    if (error !== gl.NO_ERROR) {
-        console.error("WebGL Error: ", error);
-    }
-}
-
-
 function renderByIndex(index) {
     xrSession.updateRenderState({
         layers: [
@@ -684,9 +488,6 @@ function renderByIndex(index) {
         ]
     });
 }
-
-
-
 
 
 
@@ -774,40 +575,6 @@ function createButton(name, callbackFunction, xOffset, yOffset) {
 
 
 }
-
-
-// Helper function to extract the sub-image data with block-aligned dimensions
-function extractSubImageData(data, alignedWidth, alignedHeight, textureWidth) {
-    let subImageData = new Uint8Array(alignedWidth * alignedHeight * 4); // Assuming 4 bytes per pixel (RGBA)
-    for (let row = 0; row < alignedHeight; row++) {
-        let srcStart = row * textureWidth * 4;
-        let srcEnd = srcStart + alignedWidth * 4;
-        let destStart = row * alignedWidth * 4;
-        subImageData.set(data.subarray(srcStart, srcEnd), destStart);
-    }
-    return subImageData;
-}
-
-function extractBottomHalfTexture(textureData, width, height, blockSize) {
-    // Determine the number of 4x4 blocks in width and height
-    const blocksPerRow = width / 4;
-    const blocksPerColumn = height / 4;
-
-    // Calculate the start row index for the bottom half
-    const startBlockRow = blocksPerColumn / 2;
-    const endBlockRow = blocksPerColumn;
-
-    // Calculate the starting and ending indices in the textureData array
-    const startIndex = startBlockRow * blocksPerRow * blockSize;
-    const endIndex = endBlockRow * blocksPerRow * blockSize;
-
-    // Extract the bottom half texture data
-    const bottomHalfTextureData = textureData.slice(startIndex, endIndex);
-
-    return bottomHalfTextureData;
-}
-
-// Example usage
 
 
 

@@ -42,13 +42,18 @@
         <p> 🥅 Goal load in 4096 x 2048 image per eye with stereoscopic webxr layers.</p>
         <p>Step 1. Setup test environement</p>
         <p>Step 2. determine the cause of the jank. Create stereo eqrt layer of max resolution and initialize with empty data set via get sub image</p>
-        <p> If Step 2 produces no performance hit -> continue testing. Otherwise, reach out to community</p>
+       
+        <p>initial findings. Layers above a certain size will cause jank regardless of uploaded data.</p>
 
-
-        <p> test 1. use dynamic layer to do a chunked upload of the data to the gpu and update layer</p>
-
-        <p> try and understand how the opaque data buffer works. See if we can do chunked uploads/copy texture buffers. if roadblocked reach out to the community</p>
-   
+        <p>findings. Regardless of input data. allocating opaque texture above a certain size creates jank. 
+            -> see if we can render entire layer to one eye. keep layout as default. and render to left eye. if this works we can use seperate layers/textures for each equirectLayer</p>
+            ->update this is only true of rgba data types. with compressed textures there is no cost of creating large opaque textures.
+            
+        <p> update this is only the case with rgba layers compressed layers have no intial hit regardless of size. Test half dome approach to large astc texture </p>
+        
+        
+        
+       
         <br />
     </div>
 
