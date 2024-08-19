@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+    .button-container {
+        display: flex;
+        /* Enable Flexbox layout */
+        justify-content: space-around;
+        /* Distribute space evenly around items */
+        align-items: center;
+        /* Align items vertically centered */
+        height: 100vh;
+        /* Make the container take the full viewport height */
+        background-color: #f0f0f0;
+        /* Light gray background for contrast */
+    }
+
+    /* Button styling */
+    .button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        background-color: #007BFF;
+        color: white;
+        cursor: pointer;
+        font-size: 16px;
+    }
+</style>
+
+<head>
+    <title>three.js vr - layers</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+</head>
+
+<body>
+
+    <div id="info">
+        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+        <br />
+        <p> ⭐ Experimenting to find the best way to load in high quality images via 360 webxr. </p>
+        <p> ⭐ Currently experience jank when high quality image via standard layer implementation . </p>
+        <p> 🥅 Goal load in 4096 x 2048 image per eye with stereoscopic webxr layers.</p>
+        <p>Step 1. Setup test environement</p>
+        <p>Step 2. determine the cause of the jank. Create stereo eqrt layer of max resolution and initialize with empty data set via get sub image</p>
+        <p> If Step 2 produces no performance hit -> continue testing. Otherwise, reach out to community</p>
+
+
+        <p> test 1. use dynamic layer to do a chunked upload of the data to the gpu and update layer</p>
+
+        <p> try and understand how the opaque data buffer works. See if we can do chunked uploads/copy texture buffers. if roadblocked reach out to the community</p>
+   
+        <br />
+    </div>
+
+    <div id="html-content" class="button-container">
+        <button id="button1" class="button">Button 1</button>
+        <button id="button2" class="button">Button 2</button>   
+    </div>
+
+    <script src="./encoder/build/basis_loader.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./three.js-master/three.js-master/build/three.module.js",
+                "three/addons/": "./three.js-master/three.js-master/examples/jsm/"
+            }
+        }
+    </script>
+
+
+
+</body>
+
+</html>
+
+<script type="module" src="./hd-test-index.js"></script>
+<script>
