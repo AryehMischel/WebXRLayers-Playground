@@ -88,7 +88,7 @@ export function setupScene(scene, meshParent) {
 export class CustomRenderer {
     constructor() {
         console.log("creating renderer")
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer = new THREE.WebGLRenderer({ antialias: false }); 
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.precision = "highp";
