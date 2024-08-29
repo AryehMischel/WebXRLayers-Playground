@@ -10,8 +10,6 @@ import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import ThreeMeshUI from 'https://cdn.skypack.dev/three-mesh-ui';
 import { CustomControls, CustomSkyCamera, setupScene, CustomRenderer, CustomControllers, WebXRCubeLayer, WebXREquirectangularLayer } from './main.js';
 
-
-
 //testing binding all image textures to the gl context. and then just toggling which layers are in the renderstate. 
 //this is a proof of concept for a future implementation where we can switch between different compressed textures in the same session.
 
@@ -86,14 +84,14 @@ let nzLayerRight = null;
 // './textures/compressed360/bf4.ktx2', './textures/compressed360/Italy_Mountains.ktx2', './textures/compressed360/SnowySnow360.ktx2', './textures/compressed360/Mountain.ktx2',
 let sources = [
 
-    // { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
-    // { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
-    // { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+    { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
+    { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
+    { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
 
 
-    // { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
-    // { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
-    // { name: "sources/Atlas1.ktx2", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+    { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
+    { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
+    { name: "sources/Atlas1.ktx2", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
 
 
     { name: "cubemap_bf", url: 'textures/compressedStereoCubeMaps/cubemap_bf_left.ktx2', type: "stereoCubeMap", leftSide: true },
@@ -451,9 +449,14 @@ const supportedCompressedFormats = new Map([
 //this is only necessary for gpu restricted devices. In fact this approach may only be necessary for those devices that support webxr layers
 //each compressed image source is loaded and then transformed to a webxr layer and stored in either equirectangularLayers or cubeLayers. 
 //The underlying textures will also be used in the future for rendering outside the xr session and will then be stored in compressed360Textures or compressedCubeTextures. i.e this will be refactored
-for (let i = 0; i < sources.length; i++) {
-    createCompressedTextureLayer(sources[i]) //,is createLayerFromCompressedTexture a better name?
+
+function loadimages(){
+    for (let i = 0; i < sources.length; i++) {
+        createCompressedTextureLayer(sources[i]) //,is createLayerFromCompressedTexture a better name?
+    }
+
 }
+window.loadimages = loadimages;
 
 
 let offset = 0;
@@ -462,6 +465,7 @@ function createCompressedTextureLayer(image) {
 
     ktx2Loader.load(image.url,
         (texture) => {
+            console.log("texture", texture)
             if (!ASTC_EXT && !ETC_EXT) {
                 //in the future we should have seperate handling for pc and vr devices. this is just a little hack for now
                 console.log("no compressed texture extensions available")

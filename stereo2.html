@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js vr - layers</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+</head>
+
+<body>
+
+    <div id="info">
+        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+
+        <br />
+
+        <p> ⭐ Experimenting to see if we can use gpu compressed texture for our webxr layers. </p>
+        <p> 😿 This is hurting my noob brain</p>
+        <p> 🥅 Goal create two webxr quad layers.</p>
+        <p> * One with an rgb data source </p>
+        <p> * The other whose source will be a gpu compressed texture</p>
+
+
+
+        <br />
+
+    </div>
+
+    <script src="./encoder/build/basis_loader.js"></script>
+
+    <script type="importmap">
+			{
+			  "imports": {
+				"three": "./three.js-master/three.js-master/build/three.module.js",
+				"three/addons/": "./three.js-master/three.js-master/examples/jsm/"
+			  }
+			}
+    </script>
+
+    <script defer type="module">
+        import * as THREE from 'three';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+        import { HTMLMesh } from 'three/addons/interactive/HTMLMesh.js';
+        import { InteractiveGroup } from 'three/addons/interactive/InteractiveGroup.js';
+        import { VRButton } from 'three/addons/webxr/VRButton.js';
+        import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
+        import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
+        import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
+
+        console.log(THREE)
+        let sources = ['./textures/red.ktx2',
+            './textures/blue.ktx2',
+            './textures/cubemap_uastc.ktx2'
+
+
+        ] //   './textures/compressed360Stereo/example.ktx2', './textures/compressed360Stereo/bf4nomip.ktx2',
+        //            './textures/cubemap_uastc.ktx2'
+
+
+        let camera, scene, renderer;
+        let stereoCube = true;
+        let box = null;
+        let data_red = null;
+        let data_blue = null;
+
+        let equirectLayer = null;
+        let cubeLayer = null;
+        let imgsrc = 'textures/castle2.jpg'
+        window.imgsrc = imgsrc
+        let projLayer = null;
+
+        let eqrtRadius = 40;
+        let glBinding;
+        let mediaBinding;
+        let xrSpace;
+        let xrSession = null;
+        let ktx2Textures = []
+        let gl;
+        let ext = null
+        let eqrtIsStereo = true//false;
+
+
+
+    let cubeImageElement = null;
+    let cubeIsStereo = false;
+    let cubeFaceSize = 0;
+        // let compressedImageData = {
+        //     "height": 512,
+        //     "width": 512,
+        //     "data": null,
+        //     "format": null,
+        // }
+
+
+        let compressedIMGS = {}
+
+
+        let compressed_360_Texture_Data = new Map()
+        let compressed_Cube_Texture_Data = new Map()
+
+        let compressed_360_Texture_Data_Array = [];
+        let compressed_Cube_Texture_Data_Array = [];
+        window.compressed_Cube_Texture_Data_Array = compressed_Cube_Texture_Data_Array
+        let active_Cube_Texture_Data = null;
+        let active_360_Texture_Data = null;
+
+        const supportedCompressedFormats = new Map([
+            [37496, "estcEXT.COMPRESSED_RGBA8_ETC2_EAC"],
+            [37492, "estcEXT.COMPRESSED_RGB8_ETC2"],
+            [37808, "ext.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"],
+            [1023, "srgb"]
+
+        ]);
+
+
+        let blue = false
+
+        function createEquireLayer(height = active_360_Texture_Data.height, width = active_360_Texture_Data.width, radius = eqrtRadius, colorFormat = active_360_Texture_Data.format) {
+
+            if (equirectLayer) {
+                console.log("already exists")
+            }
+
+
+            let _equirectLayer = glBinding.createEquirectLayer({
+                space: xrSpace,
+                viewPixelWidth: width,
+                viewPixelHeight: height, // (eqrtIsStereo ? 2 : 1),
+                layout: "stereo",//'stereo',//eqrtIsStereo ? "stereo-top-bottom" : "mono",
+                colorFormat: eval(colorFormat),
+                isStatic: "true",
+
+
+            });
+
+            _equirectLayer.centralHorizontalAngle = Math.PI * 2;
+            _equirectLayer.upperVerticalAngle = -Math.PI / 2.0;
+            _equirectLayer.lowerVerticalAngle = Math.PI / 2.0;
+            _equirectLayer.radius = radius;
+
+            if (equirectLayer) {
+                console.log('destroying')
+                equirectLayer.destroy()
+
+            }
+
+            equirectLayer = _equirectLayer
+
+            {
+                xrSession.updateRenderState({
+                    layers: [
+                        equirectLayer,
+                        xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+                    ]
+                });
+
+            }
+
+        }
+        function makeCubeStereoCube(cube1 = compressed_Cube_Texture_Data_Array[0], cube2 = compressed_Cube_Texture_Data_Array[1]) {
+            cube1.data[6] = cube2.data[0]
+            cube1.data[7] = cube2.data[1]
+            cube1.data[8] = cube2.data[2]
+            cube1.data[9] = cube2.data[3]
+            cube1.data[10] = cube2.data[4]
+            cube1.data[11] = cube2.data[5]
+            console.log("fuck", cube1)
+            active_Cube_Texture_Data = cube1
+            stereoCube = true;
+
+        }
+
+
+        function makeSphereStereo(data1 = compressed_360_Texture_Data_Array[0], data2 = compressed_360_Texture_Data_Array[1]) {
+            data_red = data1.data
+            data_blue = data2.data
+            console.log("red: ", data_red)
+            console.log("blue: ", data_blue)
+
+            // stereoCube = true;
+
+        }
+        window.ms = makeSphereStereo
+
+
+        function destroylayer() {
+            if (equirectLayer) {
+                console.log('destroying')
+                equirectLayer.destroy()
+                equirectLayer = null
+                //     xrSession.updateRenderState({
+                //     layers: [
+                //         xrSession.renderState.layers[0]
+                //     ]
+                // });
+
+            }
+
+        }
+
+        function createEquirectLayerByIndex(index) {
+            active_360_Texture_Data = compressed_360_Texture_Data_Array[index]
+            createEquireLayer()
+
+        }
+
+
+
+        function createCubeLayerByIndex(index) {
+            active_Cube_Texture_Data = compressed_Cube_Texture_Data_Array[index]
+            createCubeLayer()
+
+        }
+
+
+
+        window.Data_Array = compressed_360_Texture_Data_Array
+        window.des = destroylayer
+        window.createEquireLayerByIndex = createEquirectLayerByIndex
+        window.createCubeLayerByIndex = createCubeLayerByIndex
+
+        window.createEquireLayer = createEquireLayer
+
+        function getCubeTextureSize(imageElement) {
+            const glLimit = gl.getParameter(gl.MAX_CUBE_MAP_TEXTURE_SIZE);
+            const texSourceWidth = imageElement.width;
+            const texSourceHeight = imageElement.height;
+            return Math.min(glLimit, Math.min(texSourceWidth, texSourceHeight));
+        }
+
+
+        function createCubeLayer() {
+
+
+
+            let imageElement = document.createElement('img');
+            imageElement.src = './textures/compressedStereoCubeMaps/stereo3.png';
+            imageElement.onload = function () {
+                imageElement = flipImage(imageElement);
+                cubeFaceSize = getCubeTextureSize(imageElement);
+                cubeImageElement = imageElement;
+                cubeLayer = glBinding.createCubeLayer({
+                    space: xrSpace,
+                    viewPixelWidth: cubeFaceSize,
+                    viewPixelHeight: cubeFaceSize,
+                    layout: "stereo" ,
+                    isStatic: true
+                });
+                xrSession.updateRenderState({ layers: [cubeLayer, 
+                    xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+                ] });
+            }
+
+
+
+
+
+
+            // let _cubeLayer = glBinding.createCubeLayer({
+            //     space: xrSpace,
+            //     viewPixelWidth: cubeData.faceSize,
+            //     viewPixelHeight: cubeData.faceSize,
+            //     layout: "stereo",
+            //     colorFormat: eval(cubeData.format),
+            //     isStatic: true,
+
+            // });
+
+            // if (cubeLayer) {
+            //     console.log('destroying')
+            //     cubeLayer.destroy()
+
+            // }
+            // cubeLayer = _cubeLayer
+            // xrSession.updateRenderState({
+            //     layers: [
+            //         cubeLayer,
+            //         xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+            //     ]
+            // });
+        }
+
+
+        window.createCubeLayer = createCubeLayer
+
+
+        function setTexture() {
+
+            active_Cube_Texture_Data = compressed_Cube_Texture_Data_Array[0]
+            active_360_Texture_Data = compressed_360_Texture_Data_Array[0]
+
+
+        }
+
+        window.setTexture = setTexture
+
+        function loadImages(links = sources) {
+            for (let link in links) {
+                getTexturedData(links[link])
+                console.log("getting...")
+            }
+
+        }
+        window.loadImages = loadImages
+
+
+
+        function flipImage(inputImage) {
+      const outputImage = document.createElement("canvas");
+      outputImage.width = inputImage.naturalWidth;
+      outputImage.height = inputImage.naturalHeight;
+      const ctx = outputImage.getContext("2d");
+      ctx.scale(-1, 1);
+      ctx.drawImage(inputImage, -outputImage.width, 0);
+      return outputImage;
+    }
+        //core
+
+        init();
+
+        function init() {
+
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10);
+            camera.position.set(0, 1.6, 3);
+            THREE.ColorManagement.enabled = true;
+
+            const hemLight = new THREE.HemisphereLight(0x808080, 0x606060, 3);
+            const light = new THREE.DirectionalLight(0xffffff, 3);
+            scene.add(hemLight, light);
+
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+
+            window.renderer = renderer
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setAnimationLoop(animate);
+            renderer.setClearAlpha(1);
+            renderer.setClearColor(new THREE.Color(0), 0);
+            renderer.xr.enabled = true;
+
+            document.body.appendChild(renderer.domElement);
+            document.body.appendChild(VRButton.createButton(renderer));
+
+            let imageDataUrl;
+
+
+            // controllers
+            const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(0, 0, - 10)
+            ]);
+            const line = new THREE.Line(lineGeometry, new THREE.LineBasicMaterial({ color: 0x5555ff }));
+
+
+            // The invisible dummyMesh quads and the guiMesh need to be rendered before the controller lines so that they
+            // leave a hole in the depth buffer that the lines can intersect.
+            line.renderOrder = 1;
+
+            const controllerModelFactory = new XRControllerModelFactory();
+            const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
+
+            //
+
+            const controllers = [
+                renderer.xr.getController(0),
+                renderer.xr.getController(1)
+            ];
+
+            controllers.forEach((controller, i) => {
+
+                const controllerGrip = renderer.xr.getControllerGrip(i);
+                controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
+                scene.add(controllerGrip);
+
+                const hand = renderer.xr.getHand(i);
+                hand.add(handModelFactory.createHandModel(hand));
+
+                controller.add(line.clone());
+                scene.add(controller, controllerGrip, hand);
+
+            });
+
+
+            const group = new InteractiveGroup();
+            group.listenToXRControllerEvents(controllers[0]);
+            group.listenToXRControllerEvents(controllers[1]);
+            scene.add(group);
+
+
+            window.addEventListener('resize', onWindowResize, false);
+
+
+
+
+        }
+
+
+        function onWindowResize() {
+
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+        }
+        //
+
+        var ktx2Loader
+        function createKTX2Loader() {
+
+            ktx2Loader = new KTX2Loader();
+            ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
+            ktx2Loader.detectSupport(renderer);
+
+        }
+
+        let tex
+        let boxxed = true;
+        function getTexturedData(url = sources[0]) {
+
+            ktx2Loader.load(url, //will also pass us the compressed data toS ./textures/ktx2/cubemap_etc1s.ktx2  //'./textures/ktx2/cubemap_etc1s.ktx2'
+                (texture) => {
+
+                    console.log("jgfhgfgjh", texture)
+
+
+                    if (texture.isCompressedCubeTexture) {
+                        tex = texture
+
+                        //create cube texture
+                        let cubeCompressedTexture = {
+                            faceSize: tex.source.data[0].width,
+                            data: [tex.source.data[0].mipmaps[0].data, tex.source.data[1].mipmaps[0].data, tex.source.data[2].mipmaps[0].data,
+                            tex.source.data[3].mipmaps[0].data, tex.source.data[4].mipmaps[0].data, tex.source.data[5].mipmaps[0].data],
+                            format: texture.format,
+
+                        }
+                        compressed_Cube_Texture_Data_Array.push(cubeCompressedTexture)
+
+                        //check if name is unique
+                        // compressedIMGS[name] = cubeCompressedTexture
+                        // compressed_Cube_Texture_Data.set(name, cubeCompressedTexture)
+
+
+
+
+                    } else {
+                        //create equirectangular
+                        tex = texture
+
+                        console.log("creating equirectangular texture")
+
+                        let equireCompressedTexture = {
+                            "height": texture.mipmaps[0].height,
+                            "width": texture.mipmaps[0].width,
+                            "data": texture.mipmaps[0].data,
+                            "format": supportedCompressedFormats.get(texture.format),
+
+                        }
+                        //check if name is unique
+                        // compressedIMGS[name] = equireCompressedTexture
+                        compressed_360_Texture_Data_Array.push(equireCompressedTexture)
+                        // compressed_360_Texture_Data.set(name, equireCompressedTexture)
+                        // console.log(compressedIMGS.exampleName)
+
+
+                    }
+
+                    if (boxxed) {
+                        const material = new THREE.MeshBasicMaterial({ map: texture });
+                        const geometry = new THREE.BoxGeometry(1, 1, 1);
+
+                        const cube = new THREE.Mesh(geometry, material);
+                        scene.add(cube);
+                        console.log("boxed")
+                        boxxed = false;
+                        box = cube
+                        console.log(box)
+                        window.box = box
+                    }
+
+
+
+
+
+
+                    window.tex = tex
+                    // console.log(texture);
+                    // ktx2Textures.push(texture)
+
+                    // // compressedData.data = texture.source.data[0].mipmaps[0].data
+                    // // compressedData.height = texture.source.data[0].mipmaps[0].height
+                    // // compressedData.width = texture.source.data[0].mipmaps[0].width
+
+
+                    // // const material = new THREE.MeshBasicMaterial({ map: texture });
+                    // // //material.side = THREE.DoubleSide;
+                    // console.log(supportedCompressedFormats.get(texture.format).toString())
+                    // console.log(texture.format)
+                    // compressedData.format = supportedCompressedFormats.get(texture.format)
+                    // // const geometry = new THREE.SphereGeometry(10, 32, 16); //	// const geometry = new THREE.BoxGeometry(1, 1, 1); 	c
+                    // // console.log("has the right features", renderer.extensions.has('WEBGL_compressed_texture_etc'))
+                    // // const cube = new THREE.Mesh(geometry, material);
+                    // // cube.material.side = THREE.BackSide;
+                    // console.log(texture)
+
+
+                    //scene.add(cube);
+
+                }, null, null, 'compressedData');
+        }
+        window.getTexturedData = getTexturedData
+
+
+
+        function setImageData(data, height, width) {
+            //helper function executed by the loader when are data is loaded
+
+
+
+        }
+
+        window.setImageData = setImageData
+
+
+
+
+
+
+
+
+
+
+
+        //loop
+
+        let estcEXT
+        let first = true;
+
+        function animate(t, frame) {
+
+            const xr = renderer.xr;
+            const session = xr.getSession();
+            xrSession = session;
+            window.xrSession = xrSession
+            gl = renderer.getContext();
+            window.gl = gl
+
+            if (first && session) {
+                // ext = gl.getExtension("WEBGL_compressed_texture_etc")
+                xrSession.updateRenderState({
+                    layers: [
+                        xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+                    ]
+                });
+                
+                createCubeLayer()
+
+                estcEXT = gl.getExtension("WEBGL_compressed_texture_etc")
+                ext = gl.getExtension("WEBGL_compressed_texture_astc")
+
+
+                if (ext) {
+                    console.log("supports WEBGL_compressed_texture_etc")
+                } else {
+                    console.log("does not support WEBGL_compressed_texture_etc")
+                }
+
+
+                createKTX2Loader()
+                // getTexturedData()
+                first = false;
+
+            }
+
+
+            if (session && session.renderState.layers === undefined) { }
+
+            if (session && session.renderState.layers !== undefined && session.hasMediaLayer === undefined
+            ) {
+
+
+                session.hasMediaLayer = true;
+                session.requestReferenceSpace('local-floor').then((refSpace) => {
+
+                    glBinding = xr.getBinding();
+
+                    window.mediaBinding = mediaBinding;
+                    xrSpace = refSpace;
+
+                    mediaBinding = new XRMediaBinding(session);
+                    window.glBinding = glBinding;
+
+
+                });
+
+            }
+
+
+
+
+            if (session && equirectLayer && equirectLayer.needsRedraw) {
+
+                // if (blue) {
+                let glayer = glBinding.getSubImage(equirectLayer, frame, "left");
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), data_red);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+
+
+                let blayer = glBinding.getSubImage(equirectLayer, frame, "right");
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                gl.bindTexture(gl.TEXTURE_2D, blayer.colorTexture);
+                gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), data_blue);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+
+                // } else {
+                //     let blayer = glBinding.getSubImage(equirectLayer, frame, "right");
+                //     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                //     gl.bindTexture(gl.TEXTURE_2D, blayer.colorTexture);
+                //     gl.compressedTexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, active_360_Texture_Data.width, active_360_Texture_Data.height, eval(active_360_Texture_Data.format), data_blue);
+                //     gl.bindTexture(gl.TEXTURE_2D, null);
+                // }
+
+
+
+
+
+            }
+
+            if (session && cubeLayer && cubeLayer.needsRedraw) {
+
+
+
+                let offset = 0;
+                for (let eye of ["right", "left"]) {
+                    let glayer = glBinding.getSubImage(cubeLayer, frame, eye);
+                    copyCubestripToGLBuffer(glayer.colorTexture, cubeImageElement, offset * 6);
+                    ++offset;
+                }
+
+
+                console.log('continuing')
+
+            }
+
+
+
+
+
+
+
+
+
+
+
+            renderer.render(scene, camera);
+        }
+
+
+
+        function doshit(texture, offset) {
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture);
+            gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
+            gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
+            gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
+            gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
+            gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
+            gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, 0, 0, active_Cube_Texture_Data.faceSize, active_Cube_Texture_Data.faceSize, eval(active_Cube_Texture_Data.format), active_Cube_Texture_Data.data[0 + (offset)]); //es
+
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+        }
+
+
+
+        function copyCubestripToGLBuffer(tex, sourceImageElement, offset_in_faces) {
+
+            // the input texture cube face size.
+            const textureSourceCubeFaceSize = Math.min(sourceImageElement.width, sourceImageElement.height);
+
+            // dont flip the pixels as we load them into the texture buffer.
+            // TEXTURE_CUBE_MAP expects the Y to be flipped for the faces and it already
+            // is flipped in our texture image.
+            gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, tex);
+
+            let cubefaceTextures = [];
+
+            for (let i = 0; i < 6; i++) {
+                let tempCanvas = document.createElement("canvas");
+                tempCanvas.width = tempCanvas.height = cubeFaceSize;
+                const tempCanvasContext = tempCanvas.getContext('2d');
+                // Note that this call to drawImage will not only copy the bytes to the
+                // canvas but also could resized the image if our cube face size is
+                // smaller than the source image due to GL max texture size.
+                tempCanvasContext.drawImage(
+                    sourceImageElement,
+                    (i + offset_in_faces) * textureSourceCubeFaceSize, // top left x coord in source
+                    0, // top left y coord in source
+                    textureSourceCubeFaceSize, // x pixel count from source
+                    textureSourceCubeFaceSize, // y pixel count from source
+                    0, // dest x offset in the canvas
+                    0, // dest y offset in the canvas
+                    cubeFaceSize, // x pixel count in dest
+                    cubeFaceSize, // y pixel count in dest
+                );
+                cubefaceTextures.push(tempCanvas);
+            }
+
+            let errorCode = 0;
+            cubefaceTextures.forEach((canvas, i) => {
+                gl.texSubImage2D(
+                    gl.TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                    0,
+                    0, 0,
+                    gl.RGBA,
+                    gl.UNSIGNED_BYTE,
+                    canvas,
+                );
+                errorCode = gl.getError();
+            });
+
+            if (errorCode !== 0) {
+                console.log("renderingError, WebGL Error Code: " + errorCode);
+            }
+
+            gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+            console.log("finished ", offset_in_faces)
+        }
+
+
+    </script>
+
+    <script>
+
+
+    </script>
