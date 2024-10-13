@@ -1,108 +1,131 @@
-<!DOCTYPE html>
-<html lang="en">
-<style>
-    .button-container {
-        display: flex;
-        /* Enable Flexbox layout */
-        justify-content: space-around;
-        /* Distribute space evenly around items */
-        align-items: center;
-        /* Align items vertically centered */
-        height: 100vh;
-        /* Make the container take the full viewport height */
-        background-color: #f0f0f0;
-        /* Light gray background for contrast */
-    }
 
-    /* Button styling */
-    .button {
-        padding: 10px 20px;
-        border: none;
-        border-radius: 5px;
-        background-color: #007BFF;
-        color: white;
-        cursor: pointer;
-        font-size: 16px;
-    }
-</style>
+<html>
 
 <head>
-    <title>three.js vr - layers</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>A-Frame Cubemap Component - Change Cubemap Test</title>
+  <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+  <script src="cubemap.js"></script>
+  <script>
+    AFRAME.registerComponent('create-ktx2-loader', {
+      schema: { type: 'string' },
+      init: function () {
+        // ktx2Loader = AFRAME.scenes[0].systems['gltf-model'].getKTX2Loader()
+        // ktx2Loader.setWorkerLimit(8);
+        // gl = scene.renderer.getContext();
+
+        // //get compressed texture extensions
+        // const ASTC_EXT = gl.getExtension("WEBGL_compressed_texture_astc")
+        // const ETC_EXT = gl.getExtension("WEBGL_compressed_texture_etc")
+
+        // if (ASTC_EXT) console.log("ASTC_EXT", ASTC_EXT)
+
+        // if (ETC_EXT) console.log("ETC_EXT", ETC_EXT)
+        // load()
+      }
+    });
+  </script>
 </head>
 
 <body>
+  <a-scene stats renderer="
+  colorManagement: true;
+antialias: true;
+highRefreshRate: true;
+anisotropy: 1;
+foveationLevel: 0;">
+    <a-entity id="skybox" scale="1 1 1"></a-entity>
+  </a-scene>
+  <script src="./encoder/build/basis_loader.js"></script>
 
-    <div id="info">
-        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
-        <br />
-        <p> ⭐ Experimenting to see if we can use gpu compressed texture for our webxr layers. </p>
-        <p> 😿 This is hurting my noob brain</p>
-        <p> 🥅 Goal create two webxr quad layers.</p>
-        <p> * One with an rgb data source </p>
-        <p> * The other whose source will be a gpu compressed texture</p>
-        <br />
-    </div>
+  <script type="importmap">
+      {
+          "imports": {
+              "three": "./three.js-master/three.js-master/build/three.module.js",
+              "three/addons/": "./three.js-master/three.js-master/examples/jsm/"
+          }
+      }
+  </script>
+  <script type="module" src="./index.js"></script>
 
-    <div id="html-content" class="button-container">
-        <button id="button1" class="button">Button 1</button>
-        <button id="button2" class="button">Button 2</button>   
-    </div>
+  
+  <script type="text/javascript">
+      let sckybox = document.getElementById('skybox')
+      window.sckybox = sckybox
+    // let compressedCubeTextureURLs = [
 
-    <script src="./encoder/build/basis_loader.js"></script>
+    //   'Assets/Textures/Cubemaps/desert-cube/jpgs/cubemap_uastc.ktx2', // right
+    //   // 'Assets/Textures/Cubemaps/desert-cube/jpgs/cubemap.ktx2', // right
+    //   // 'Assets/Textures/Cubemaps/louvre-cube/jpgs/cubemap.ktx2', // right
+    //   // 'Assets/Textures/Cubemaps/snow-cube/jpgs/cubemap.ktx2', // right
+    //   // 'Assets/Textures/Cubemaps/first-cube/jpgs/cubemap.ktx2', // right
+    //   // 'Assets/Textures/Cubemaps/sky-cube/jpgs/cubemap.ktx2', // right
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "./three.js-master/three.js-master/build/three.module.js",
-                "three/addons/": "./three.js-master/three.js-master/examples/jsm/"
+    // ]
+    async function loadCompressed() {
+      // const maxTextureSize = scene.renderer.capabilities.maxTextureSize;
+      // console.log('Maximum texture size:', maxTextureSize);
+      Promise.all(compressedCubeTextureURLs.map(url => ktx2Loader.loadAsync(url)))
+        .then(textures => {
+          console.log('Textures loaded:', textures);
+
+          textures.forEach((texture, index) => {
+            if (!texture) {
+              console.error(`Texture at index ${index} failed to load.`);
+            } else {
+              console.log(`Texture at index ${index} loaded successfully:`, texture);
+              // cubemapTextures.push(texture)
             }
-        }
-    </script>
+          });
+          console.log(textures.length)
+          cubeTexture = textures[0]
+        window.cubeTexture = textures[0]
+        console.log('Cube texture loaded successfully:', window.cubeTexture);
+        console.log('Cube texture type:', window.cubeTexture.constructor.name);
+          console.log('Cube texture loaded successfully!');
+          sckybox.setAttribute("cubemap", "");
 
 
+        })
+        .catch(error => {
+          console.error('An error occurred loading the KTX2 textures:', error);
+        });
+    }
+    
+    // const loader = new THREE.CubeTextureLoader()
+  
+    // // Load the cube texture using promise
+    // function loadNormal(){
+    //   loader.loadAsync([
+    //   'http://127.0.0.1:8080/projects/2024/pickaplace/Assets/Textures/Cubemaps/louvre-cube/jpgs/posx.jpg',
+    //   'http://127.0.0.1:8080/projects/2024/pickaplace/Assets/Textures/Cubemaps/louvre-cube/jpgs/negx.jpg',
+    //   'http://127.0.0.1:8080/projects/2024/pickaplace/Assets/Textures/Cubemaps/louvre-cube/jpgs/posy.jpg',
+    //   'http://127.0.0.1:8080/projects/2024/pickaplace/Assets/Textures/Cubemaps/louvre-cube/jpgs/negy.jpg',
+    //   'http://127.0.0.1:8080/projects/2024/pickaplace/Assets/Textures/Cubemaps/louvre-cube/jpgs/posz.jpg',
+    //   'http://127.0.0.1:8080/projects/2024/pickaplace/Assets/Textures/Cubemaps/louvre-cube/jpgs/negz.jpg'
+    // ]).then((cubeTexture) => {
+
+    //   window.cubeTexture = cubeTexture
+    //   // Code to execute on completion
+    //   console.log('Cube texture loaded successfully!');
+    //   sckybox.setAttribute("cubemap", "");
+    //   // Additional code here...
+    // }).catch((error) => {
+    //   console.error('Error loading cube texture:', error);
+    // });
+
+    // }
+
+
+
+  </script>
 
 </body>
 
 </html>
-<script type="module" src="./index.js"></script>
-<script>
+    
 
-    /*loose style guide
-    
-    JavaScript Style Guide
-    Naming Conventions
-    
-    Classes: Use PascalCase (e.g., WebXRCubeLayer).
-    Variables and Functions: Use camelCase (e.g., createCubeLayer, compressedCubeTextures).
-    Constants: Use UPPER_SNAKE_CASE (e.g., MAX_TEXTURE_SIZE).
-    Indentation and Spacing
-    
-    Not super consistent but ideally...
-    Use 4 spaces for indentation.
-    Use a single space after keywords (e.g., if (condition) {).
-    Use a single space before opening braces { and after closing braces }.
-    
-    Semicolons: Always use semicolons to terminate statements.
-    
-    Braces: I tend to use braces for all control structures, even single-line statements. I could be convinced otherwise.
-    
-    
-    
-    Functions:
-    Use arrow functions for anonymous functions.
-    Use named functions for better stack traces.
-    
-    
-    Error Handling: I really gotta start soon...
-    
-    
-    Use double quotes for attribute values.
-    Always include closing tags for elements.
-    
-    
-    
-    
-    */
-</script>
+
+
+
+
+

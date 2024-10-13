@@ -16,6 +16,7 @@ let eqrtRadius = 40;
 let redraw = false;
 
 const htmlContent = document.querySelector('#html-content');
+let cubeTexture
 //create scene, add lights and some geometry
 scene = new THREE.Scene();
 let meshParent = new THREE.Object3D();
@@ -85,17 +86,8 @@ let cubeLayers = new Object();
 //mock data for gpu compressed textures
 // './textures/compressed360/bf4.ktx2', './textures/compressed360/Italy_Mountains.ktx2', './textures/compressed360/SnowySnow360.ktx2', './textures/compressed360/Mountain.ktx2',
 let sources = [
-    { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
-    { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
-    { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
-    { name: "bf4_1", url: 'textures/compressed360Stereo/bf4_uastc_1.ktx2', type: "stereoEquirectangular" },
-    { name: "bf4_2", url: 'textures/compressed360Stereo/bf4_uastc_2.ktx2', type: "stereoEquirectangular" },
-    { name: "bf4_3", url: 'textures/compressed360Stereo/bf4_uastc_3.ktx2', type: "stereoEquirectangular" },
 
-
-    
-    { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
-    { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
+    { name: "stereoCubeMap", url: 'textures/compressedCubeMaps/cubemap_uastc.ktx2', type: "stereoCubeMap", leftSide: false },
 ]
 
 
@@ -140,75 +132,84 @@ function createCompressedTextureLayer(image) {
 
     ktx2Loader.load(image.url,
         (texture) => {
-            if (!ASTC_EXT && !ETC_EXT) {
-                //in the future we should have seperate handling for pc and vr devices. this is just a little hack for now
-                console.log("no compressed texture extensions available")
-                return
-            }
 
-            let format = eval(supportedCompressedFormats.get(texture.format))
+            console.log(texture)
 
+            cubeTexture = texture
+            window.cubeTexture = texture;
+            console.log('Cube texture loaded successfully:', window.cubeTexture);
+            console.log('Cube texture type:', window.cubeTexture.constructor.name);
+            console.log('Cube texture loaded successfully!');
+            // window.skybox.setAttribute("cubemap", "");
+            // if (!ASTC_EXT && !ETC_EXT) {
+            //     //in the future we should have seperate handling for pc and vr devices. this is just a little hack for now
+            //     console.log("no compressed texture extensions available")
+            //     return
+            // }
 
-            if (image.type === "stereoCubeMap") {
-                console.log(`adding other side to stereocube texture ${image.url}`)
-                if (image.name in cubeLayers) {
-                    if (image.leftSide) {
-                        cubeLayers[image.name].Cube_Texture = texture
-                    } else {
-                        cubeLayers[image.name].Cube_Texture_Right = texture
-                    }
-                } else {
-                    console.log("created stereo cube texture, creating webxr layer")
-                    if (image.leftSide) {
-                        let cubeLayer = new WebXRCubeLayer(null, texture, null, true, format);
-                        cubeLayers[image.name] = cubeLayer
-                        offset += 0.1;
-                        createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers)},0, offset)
-                        createButton(image.name + " set layer", () => { setLayer(image.name, cubeLayers)}, 0.2, offset )
-                    } else {
-                        let cubeLayer = new WebXRCubeLayer(null, null, texture, true, format);
-                        cubeLayers[image.name] = cubeLayer
-                        offset += 0.1;
-                        createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers)}, 0, offset)
-                        createButton(image.name + " set layer", () => { setLayer(image.name, cubeLayers)}, 0.2, offset )
+            // let format = eval(supportedCompressedFormats.get(texture.format))
 
 
-                    }
+            // if (image.type === "stereoCubeMap") {
+            //     console.log(`adding other side to stereocube texture ${image.url}`)
+            //     if (image.name in cubeLayers) {
+            //         if (image.leftSide) {
+            //             cubeLayers[image.name].Cube_Texture = texture
+            //         } else {
+            //             cubeLayers[image.name].Cube_Texture_Right = texture
+            //         }
+            //     } else {
+            //         console.log("created stereo cube texture, creating webxr layer")
+            //         if (image.leftSide) {
+            //             let cubeLayer = new WebXRCubeLayer(null, texture, null, true, format);
+            //             cubeLayers[image.name] = cubeLayer
+            //             offset += 0.1;
+            //             createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers)},0, offset)
+            //             createButton(image.name + " set layer", () => { setLayer(image.name, cubeLayers)}, 0.2, offset )
+            //         } else {
+            //             let cubeLayer = new WebXRCubeLayer(null, null, texture, true, format);
+            //             cubeLayers[image.name] = cubeLayer
+            //             offset += 0.1;
+            //             createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers)}, 0, offset)
+            //             createButton(image.name + " set layer", () => { setLayer(image.name, cubeLayers)}, 0.2, offset )
 
-                }
-            }
 
-            if (image.type === "cubemap") {
-                console.log("created cube texture, creating webxr layer")
+            //         }
 
-                let cubeLayer = new WebXRCubeLayer(null, texture, null, false, format);
-                cubeLayers[image.name] = cubeLayer
-                offset += 0.1;
-                createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers) }, 0, offset)
-                createButton(image.name + " set layer"   , () => { setLayer(image.name, cubeLayers) }, 0.2, offset)
+            //     }
+            // }
+
+            // if (image.type === "cubemap") {
+            //     console.log("created cube texture, creating webxr layer")
+
+            //     let cubeLayer = new WebXRCubeLayer(null, texture, null, false, format);
+            //     cubeLayers[image.name] = cubeLayer
+            //     offset += 0.1;
+            //     createButton(image.name + " create layer", () => { createLayer(image.name, cubeLayers) }, 0, offset)
+            //     createButton(image.name + " set layer"   , () => { setLayer(image.name, cubeLayers) }, 0.2, offset)
 
                
-            }
-            if (image.type === "equirectangular") {
-                console.log("created equirectangular texture, creating webxr layer")
+            // }
+            // if (image.type === "equirectangular") {
+            //     console.log("created equirectangular texture, creating webxr layer")
 
-                let equirectLayer = new WebXREquirectangularLayer(null, texture, false, format, eqrtRadius);
-                equirectangularLayers[image.name] = equirectLayer
-                offset += 0.1;
-                createButton(image.name + " create layer", () => { createLayer(image.name, equirectangularLayers)},0, offset)
-                createButton(image.name + " set layer", () => { setLayer(image.name, equirectangularLayers) },0.2, offset)
+            //     let equirectLayer = new WebXREquirectangularLayer(null, texture, false, format, eqrtRadius);
+            //     equirectangularLayers[image.name] = equirectLayer
+            //     offset += 0.1;
+            //     createButton(image.name + " create layer", () => { createLayer(image.name, equirectangularLayers)},0, offset)
+            //     createButton(image.name + " set layer", () => { setLayer(image.name, equirectangularLayers) },0.2, offset)
 
-            }
-            if (image.type === "stereoEquirectangular") {
-                console.log("created stereo equirectangular texture, creating webxr layer")
+            // }
+            // if (image.type === "stereoEquirectangular") {
+            //     console.log("created stereo equirectangular texture, creating webxr layer")
 
-                let stereoEquirectLayer = new WebXREquirectangularLayer(null, texture, true, format, eqrtRadius);
-                equirectangularLayers[image.name] = stereoEquirectLayer
-                offset += 0.1;
-                createButton(image.name + " create layer", () => { createLayer(image.name, equirectangularLayers)},0, offset)
-                createButton(image.name + " set layer", () => { setLayer(image.name, equirectangularLayers) },0.2, offset)
-                //compressed360Textures.push(texture)
-            }
+            //     let stereoEquirectLayer = new WebXREquirectangularLayer(null, texture, true, format, eqrtRadius);
+            //     equirectangularLayers[image.name] = stereoEquirectLayer
+            //     offset += 0.1;
+            //     createButton(image.name + " create layer", () => { createLayer(image.name, equirectangularLayers)},0, offset)
+            //     createButton(image.name + " set layer", () => { setLayer(image.name, equirectangularLayers) },0.2, offset)
+            //     //compressed360Textures.push(texture)
+            // }
 
             // IMAGE FORMAT VALIDATION. 
             // if (texture.isCompressedCubeTexture) {
