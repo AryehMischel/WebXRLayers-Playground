@@ -56,31 +56,31 @@ export function setupScene(scene, meshParent) {
     const light = new THREE.DirectionalLight(0xffffff, 3);
     scene.add(hemLight, light);
 
-    let geometry = new THREE.ConeGeometry(10, 30, 4, 1);
-    let material = new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true });
+    // let geometry = new THREE.ConeGeometry(10, 30, 4, 1);
+    // let material = new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true });
 
 
-    for (let i = 0; i < 500; i++) {
+    // for (let i = 0; i < 500; i++) {
 
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.x = Math.random() * 1600 - 800;
-        mesh.position.y = 0;
-        mesh.position.z = Math.random() * 1600 - 800;
-        mesh.updateMatrix();
-        mesh.matrixAutoUpdate = false;
-        meshParent.add(mesh);
+    //     const mesh = new THREE.Mesh(geometry, material);
+    //     mesh.position.x = Math.random() * 1600 - 800;
+    //     mesh.position.y = 0;
+    //     mesh.position.z = Math.random() * 1600 - 800;
+    //     mesh.updateMatrix();
+    //     mesh.matrixAutoUpdate = false;
+    //     meshParent.add(mesh);
 
-    }
-    const dirLight1 = new THREE.DirectionalLight(0xffffff, 3);
-    dirLight1.position.set(1, 1, 1);
-    scene.add(dirLight1);
+    // }
+    // const dirLight1 = new THREE.DirectionalLight(0xffffff, 3);
+    // dirLight1.position.set(1, 1, 1);
+    // scene.add(dirLight1);
 
-    const dirLight2 = new THREE.DirectionalLight(0x002288, 3);
-    dirLight2.position.set(- 1, - 1, - 1);
-    scene.add(dirLight2);
+    // const dirLight2 = new THREE.DirectionalLight(0x002288, 3);
+    // dirLight2.position.set(- 1, - 1, - 1);
+    // scene.add(dirLight2);
 
-    const ambientLight = new THREE.AmbientLight(0x555555);
-    scene.add(ambientLight);
+    // const ambientLight = new THREE.AmbientLight(0x555555);
+    // scene.add(ambientLight);
 
 }
 
@@ -88,10 +88,10 @@ export function setupScene(scene, meshParent) {
 export class CustomRenderer {
     constructor() {
         console.log("creating renderer")
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
+        this.renderer = new THREE.WebGLRenderer({ antialias: false });
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.precision = "highp";
+        this.renderer.precision = "lowp";
         this.renderer.setClearAlpha(1);
         this.renderer.setClearColor(new THREE.Color(0), 0);
         this.renderer.xr.enabled = true;
@@ -243,3 +243,53 @@ export class WebXREquirectangularLayer {
         return this.stereo;
     }
 }
+
+export class WebXRQuadLayer {
+
+    constructor(image) {
+         this.layer = null;
+        // this.Equirectangular_Texture = Equirectangular_Texture;
+        // this.stereo = stereo;
+        // this.format = format;
+        // this.radius = radius;
+        this.image = image; 
+        this.type = "WebXRQuadLayer";
+        // this.type = "WebXREquirectangularLayer";
+        
+
+
+    }
+
+    // Method to create the WebXR layer
+    createLayer(image = this.image) {
+ 
+        if (!glBinding) { glBinding = getGLBinding() }
+        if (!xrSpace) { xrSpace = getXRSpace() }
+
+        this.layer = glBinding.createQuadLayer({
+            space: xrSpace,
+            viewPixelWidth: image.width,
+            viewPixelHeight: image.height,
+            layout: "mono",
+
+
+        });
+
+
+        this.layer.width = 2;
+        this.layer.height = 1;
+        let pos = { x: 0, y: 0, z: -2 };
+        let orient = { x: 0, y: 0, z: 0, w: 1 };
+        this.layer.transform = new XRRigidTransform(pos, orient);
+
+
+    }
+
+    
+
+    // Method to check if the layer is stereo
+    isStereo() {
+        return this.stereo;
+    }
+
+} 

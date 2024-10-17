@@ -8,10 +8,11 @@ import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFa
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import ThreeMeshUI from 'https://cdn.skypack.dev/three-mesh-ui';
-import { CustomControls, CustomSkyCamera, setupScene, CustomRenderer, CustomControllers, WebXRCubeLayer, WebXREquirectangularLayer } from './main.js';
+import Stats from 'three/addons/libs/stats.module.js';
+import { CustomControls, CustomSkyCamera, setupScene, CustomRenderer, CustomControllers, WebXRCubeLayer, WebXREquirectangularLayer, WebXRQuadLayer } from './main.js';
 
 
-let scene, camera, renderer, controls, controllers, group, ktx2Loader, gl, glBinding, xrSpace, xrSession;
+let scene, camera, renderer, stats, controls, controllers, group, ktx2Loader, gl, glBinding, xrSpace, xrSession;
 let eqrtRadius = 40;
 let redraw = false;
 
@@ -56,6 +57,13 @@ group.listenToXRControllerEvents(controllers[1]);
 scene.add(group);
 
 
+
+// stats.init( renderer );
+// const stats = new Stats();
+// stats.showPanel(0); // 0: fps, 1: ms, 2: memory
+// document.body.appendChild(stats.dom);
+
+
 //create ktx2 loader ?maybe should be a function?
 ktx2Loader = new KTX2Loader();
 ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
@@ -63,18 +71,26 @@ ktx2Loader.detectSupport(renderer);
 ktx2Loader.setWorkerLimit(8);
 
 
-
 //mock data for gpu compressed textures
 // './textures/compressed360/bf4.ktx2', './textures/compressed360/Italy_Mountains.ktx2', './textures/compressed360/SnowySnow360.ktx2', './textures/compressed360/Mountain.ktx2',
 let sources = [
-    { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
-    { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
-    { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
-    { name: "bf4_1", url: 'textures/compressed360Stereo/bf4_uastc_1.ktx2', type: "stereoEquirectangular" },
-    { name: "bf4_2", url: 'textures/compressed360Stereo/bf4_uastc_2.ktx2', type: "stereoEquirectangular" },
-    // { name: "bf4_3", url: 'textures/compressed360Stereo/bf4_uastc_3.ktx2', type: "stereoEquirectangular" },
-    // { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
-    // { name: "stereoCubeMap", url: 'textures/compressedStereoCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
+    // { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
+    
+    // { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
+    // { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
+    // // { name: "bf4_1", url: 'textures/compressed360Stereo/bf4_uastc_1.ktx2', type: "stereoEquirectangular" },
+    // // { name: "bf4_2", url: 'textures/compressed360Stereo/bf4_uastc_2.ktx2', type: "stereoEquirectangular" },
+    // // { name: "bf4_3", url: 'textures/compressed360Stereo/bf4_uastc_3.ktx2', type: "stereoEquirectangular" },
+
+
+    // { name: "stereoCubeMap", url: 'textures/compressedCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
+    // { name: "stereoCubeMap", url: 'textures/compressedCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
+    
+    { name: "unknownCubeMap", url: 'textures/compressedStereoCubeMaps/ktx2/cubemap_uastc.ktx2', type: "cubeMap"},
+    
+   
+
+    
 ]
 
 
@@ -123,9 +139,11 @@ function createCompressedTextureLayer(image) {
                 console.log("no compressed texture extensions available")
                 return
             }
+            // console.log(texture.format)
 
             let format = eval(supportedCompressedFormats.get(texture.format))
-
+           
+            console.log("format", format)
 
             if (image.type === "stereoCubeMap") {
                 if (image.name in layers) {
@@ -138,15 +156,15 @@ function createCompressedTextureLayer(image) {
                     if (image.leftSide) {
                         let cubeLayer = new WebXRCubeLayer(null, texture, null, true, format);
                         layers[image.name] = cubeLayer
-                        offset += 0.1;
+                        offset += 0.2;
                         //createButton(image.name + " create layer", () => { createLayer(image.name) }, 0, offset)
-                        createButton(image.name + " set layer", () => {createLayer(image.name); setLayer(image.name) }, 0.2, offset)
+                        createButton(image.name + " set layer", () => { createLayer(image.name); setLayer(image.name) }, 0.2, offset)
                     } else {
                         let cubeLayer = new WebXRCubeLayer(null, null, texture, true, format);
                         layers[image.name] = cubeLayer
-                        offset += 0.1;
+                        offset += 0.2;
                         // createButton(image.name + " create layer", () => { createLayer(image.name) }, 0, offset)
-                        createButton(image.name + " set layer", () => {createLayer(image.name); setLayer(image.name)}, 0.2, offset)
+                        createButton(image.name + " set layer", () => { createLayer(image.name); setLayer(image.name) }, 0.2, offset)
 
 
                     }
@@ -154,24 +172,25 @@ function createCompressedTextureLayer(image) {
                 }
             }
 
-            if (image.type === "cubemap") {
+            if (image.type === "cubeMap") {
                 console.log("created cube texture, creating webxr layer")
 
                 let cubeLayer = new WebXRCubeLayer(null, texture, null, false, format);
                 layers[image.name] = cubeLayer
-                offset += 0.1;
+                offset += 0.2;
                 // createButton(image.name + " create layer", () => { createLayer(image.name) }, 0, offset)
                 // createLayer(image.name)
                 createButton(image.name + " set layer", () => { createLayer(image.name); setLayer(image.name) }, 0.2, offset)
 
 
             }
+
             if (image.type === "equirectangular") {
                 console.log("created equirectangular texture, creating webxr layer")
 
                 let equirectLayer = new WebXREquirectangularLayer(null, texture, false, format, eqrtRadius);
                 layers[image.name] = equirectLayer
-                offset += 0.1;
+                offset += 0.2;
                 // createButton(image.name + " create layer", () => { createLayer(image.name) }, 0, offset)
                 // createLayer(image.name)
                 createButton(image.name + " set layer", () => { createLayer(image.name); setLayer(image.name) }, 0.2, offset)
@@ -182,7 +201,7 @@ function createCompressedTextureLayer(image) {
 
                 let stereoEquirectLayer = new WebXREquirectangularLayer(null, texture, true, format, eqrtRadius);
                 layers[image.name] = stereoEquirectLayer
-                offset += 0.1;
+                offset += 0.2;
                 // createButton(image.name + " create layer", () => { createLayer(image.name) }, 0, offset)
 
                 createButton(image.name + " set layer", () => { createLayer(image.name); setLayer(image.name) }, 0.2, offset)
@@ -200,7 +219,6 @@ function createCompressedTextureLayer(image) {
 }
 
 function createEquireLayer(texture, stereo = false) {
-
 
     let format = eval(supportedCompressedFormats.get(texture.format))
     let sphereLayer = new WebXREquirectangularLayer(null, texture, stereo, format, eqrtRadius);
@@ -229,27 +247,6 @@ function createEqrtLayerByIndex(index, stereo = false) {
 
 }
 
-function createQuadLayer(imageURL = "./BF1.png") {
-    let image = new Image();
-    image.src = imageURL;
-    image.onload = function () {
-        let layer = new WebXRQuadLayer(image);
-        layer.createLayer()
-        layers.push(layer)
-        activeLayers.push(layer)
-        // let quadLayer = new WebXRQuadLayer(texture);
-        // quadLayer.createLayer()
-        // activeWebXRLayer = quadLayer
-
-        // xrSession.updateRenderState({
-        //     layers: [
-        //         activeWebXRLayer.layer,
-        //         xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
-        //     ]
-        // });
-    }
-
-}
 
 
 function createCubeLayer(texture, texture_right = null, stereo = false) {
@@ -332,14 +329,16 @@ function animate(t, frame) {
     }
 
 
-    for(let i = 0; i < activeLayers.length; i++){
-        if(activeLayers[i].layer.needsRedraw){
+    for (let i = 0; i < activeLayers.length; i++) {
+        if (activeLayers[i].layer.needsRedraw) {
+            console.log("redrawing layer")
             drawWebXRLayer(activeLayers[i], session, frame)
         }
     }
 
     renderer.render(scene, camera);
     controls.update();
+    stats.update();
 
 }
 
@@ -351,6 +350,7 @@ function animate(t, frame) {
 
 function drawWebXRLayer(layer, session, frame) {
     let format = layer.format;
+    console.log("drawing layer", layer.type)
 
     if (layer.type === "WebXREquirectangularLayer") {
         drawWebXREquirectangularLayer(layer, session, frame)
@@ -387,6 +387,7 @@ function drawWebXRCubeLayer(layer, session, frame) {
     let width = layer.Cube_Texture.source.data[0].width;
 
     if (!layer.stereo) {
+        console.log("drawing cube layer")
         let glayer = glBinding.getSubImage(layer.layer, frame);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
@@ -415,11 +416,11 @@ function drawWebXRCubeLayer(layer, session, frame) {
 
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
 
-        glayer = glBinding.getSubImage(activeWebXRLayer.layer, frame, "right");
+        glayer = glBinding.getSubImage(layer.layer, frame, "right");
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, glayer.colorTexture);
 
-        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[0].mipmaps[0].data); //es
+        gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[0].mipmaps[0].data); //es
         gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[1].mipmaps[0].data); //es
         gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[2].mipmaps[0].data); //es
         gl.compressedTexSubImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, 0, 0, width, width, format, layer.Cube_Texture_Right.source.data[3].mipmaps[0].data); //es
@@ -436,14 +437,11 @@ function drawWebXRCubeLayer(layer, session, frame) {
 
 function drawWebXRQuadLayer(layer, session, frame) {
 
-        let glayer = glBinding.getSubImage(layer, frame);
-
-        // TEXTURE_CUBE_MAP expects the Y to be flipped for the faces and it already
-        // is flipped in our texture image.
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-        gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, layer.texture.image);
-        gl.bindTexture(gl.TEXTURE_2D, null);
+    let glayer = glBinding.getSubImage(layer.layer, frame);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, layer.image);
+    gl.bindTexture(gl.TEXTURE_2D, null);
 
 }
 
@@ -492,9 +490,12 @@ function destroyLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2
 }
 
 function setLayer(layerID = 'textures/compressedCubeMaps/cubemapRight.ktx2') {
-    
-   
+
+
     // console.log(activeWebXRLayer.layer)
+    console.log("setting layer", layerID)
+    console.log(layers[layerID])
+
 
     xrSession.updateRenderState({
         layers: [
@@ -561,7 +562,7 @@ function createButton(name, callbackFunction, xOffset, yOffset) {
     mesh.position.y = 1.5 + (yOffset * 1.5);
     mesh.position.z = - 0.5 + (-xOffset * 4);
     mesh.rotation.y = (Math.PI / 4);
-    mesh.scale.setScalar(2);
+    mesh.scale.setScalar(8);
 
     group.add(mesh);
 
@@ -569,3 +570,117 @@ function createButton(name, callbackFunction, xOffset, yOffset) {
 }
 
 
+
+
+// creating three js stats 
+// copying three js stats to a canvas texture 
+// creating a plane geometry, adding statsTexture to the plane and adding to scene as a worldspace ui element for vr 
+
+
+stats = new Stats();
+// document.body.appendChild(stats.dom);
+
+let statsCanvas = stats.dom.children[0];
+console.log(statsCanvas)
+
+// Create a canvas texture from statsCanvas
+const statsTexture = new THREE.CanvasTexture(statsCanvas);
+statsTexture.minFilter = THREE.LinearFilter; // Prevents resizing to power of two
+
+// Create a material using the canvas texture
+const statsMaterial = new THREE.MeshBasicMaterial({ map: statsTexture });
+
+// Create a large plane geometry
+const statsGeometry = new THREE.PlaneGeometry(2.5, 2.5); // Adjust size as needed
+
+// Create a mesh using the geometry and material
+const statsMesh = new THREE.Mesh(statsGeometry, statsMaterial);
+
+// Position the plane in the scene
+statsMesh.position.set(0, 2, -10); // Adjust position as needed
+
+// Add the plane to the scene
+scene.add(statsMesh);
+
+setInterval(updateStatsMesh, 1000 / 60); // Update at 60 FPS
+// // document.body.appendChild();
+function updateStatsMesh() {
+    statsMaterial.needsUpdate = true;
+    statsTexture.needsUpdate = true;
+    
+}
+
+
+
+let uiCanvas = document.createElement('canvas');
+uiCanvas.width = 512;
+uiCanvas.height = 512;
+let uiContext = uiCanvas.getContext('2d');
+
+function drawOnCanvas(){
+    uiContext.fillStyle = 'red';
+    uiContext.fillRect(0, 0, 512, 512);
+    uiContext.fillStyle = 'white';
+    uiContext.font = '48px sans-serif';
+    uiContext.fillText('Hello, World!', 100, 100);
+    canvasToQuadLayer()
+}
+
+
+window.drawOnCanvas = drawOnCanvas;
+
+
+function canvasToQuadLayer() {
+    let image = new Image();
+    image.src = uiCanvas.toDataURL();
+    image.onload = function () {
+        console.log("creating quad layer")
+        let layer = new WebXRQuadLayer(image);
+        layer.createLayer()
+        layers[image.src] = layer
+        activeLayers.push(layer)
+
+        xrSession.updateRenderState({
+            layers: [
+                // xrSession.renderState.layers[xrSession.renderState.layers.length - 2],
+                layer.layer,
+                xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+            ]
+        });
+    }
+}
+
+
+
+function createQuadLayer(imageURL = "./BF1.png") {
+    let image = new Image();
+    image.src = imageURL;
+    image.onload = function () {
+        console.log("creating quad layer")
+        let layer = new WebXRQuadLayer(image);
+        layer.createLayer()
+        layers[imageURL] = layer
+        activeLayers.push(layer)
+
+        xrSession.updateRenderState({
+            layers: [
+                // xrSession.renderState.layers[xrSession.renderState.layers.length - 2],
+                layer.layer,
+                xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+            ]
+        });
+        // let quadLayer = new WebXRQuadLayer(texture);
+        // quadLayer.createLayer()
+        // activeWebXRLayer = quadLayer
+
+        // xrSession.updateRenderState({
+        //     layers: [
+        //         activeWebXRLayer.layer,
+        //         xrSession.renderState.layers[xrSession.renderState.layers.length - 1]
+        //     ]
+        // });
+    }
+
+}
+
+window.createQuadLayer = createQuadLayer
