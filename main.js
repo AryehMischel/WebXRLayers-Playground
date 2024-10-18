@@ -7,11 +7,13 @@ import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFa
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
 import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { getGLBinding, getXRSpace } from './index.js';
+import { getGLBinding, getXRSpace, getASTC, getETC } from './index.js';
 
 let sceneInstance = null;
 let glBinding = null;
 let xrSpace = null;
+let ASTC_EXT = null
+let ETC_EXT = null
 
 export function getScene() {
     if (!sceneInstance) {
@@ -157,10 +159,13 @@ export class WebXRCubeLayer {
 
         if (!glBinding) { glBinding = getGLBinding() }
         if (!xrSpace) { xrSpace = getXRSpace() }
+        
+        if(!ASTC_EXT) { ASTC_EXT = getASTC() }
+        if(!ETC_EXT) { ETC_EXT = getETC()}
 
 
         // Logic to create the WebXR layer using this.active_Cube_Texture
-        console.log("Creating WebXR layer with texture:", texture);
+        console.log("Creating WebXR layer with texture:", eval(this.format));
         console.log("height, widht", texture.source.data[0].width, texture.source.data[0].height);
 
 
@@ -169,7 +174,7 @@ export class WebXRCubeLayer {
             viewPixelWidth: texture.source.data[0].width,
             viewPixelHeight: texture.source.data[0].height,
             layout: this.stereo ? "stereo" : "mono",
-            colorFormat: eval(this.format),
+            colorFormat: 37840,            // eval(this.format),
             isStatic: false,
 
         });

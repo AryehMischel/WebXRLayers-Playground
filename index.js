@@ -66,7 +66,7 @@ scene.add(group);
 
 //create ktx2 loader ?maybe should be a function?
 ktx2Loader = new KTX2Loader();
-ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/libs/basis/');
+ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
 ktx2Loader.detectSupport(renderer);
 ktx2Loader.setWorkerLimit(8);
 
@@ -78,16 +78,15 @@ let sources = [
 
 
     // { name: "etcTest", url: './textures/compressed360/Mountain.ktx2', type: "equirectangular"},
-     { name: "skywhale", url: 'textures/snowyPark.ktx2', type: "cubeMap" },
 
-    // { name: "skywhale", url: 'textures/sample/skywhaleLeft.ktx2', type: "stereoCubeMap",  leftSide: true },
-    // { name: "skywhale", url: 'textures/sample/skywhaleRight.ktx2', type: "stereoCubeMap",  leftSide: false },
+    { name: "skywhale", url: 'textures/sample/skywhaleLeft.ktx2', type: "stereoCubeMap",  leftSide: true },
+    { name: "skywhale", url: 'textures/sample/skywhaleRight.ktx2', type: "stereoCubeMap",  leftSide: false },
 
-    // { name: "forest", url: 'textures/sample/forestLeft.ktx2', type: "stereoCubeMap",  leftSide: true },
-    // { name: "forest", url: 'textures/sample/forestRight.ktx2', type: "stereoCubeMap",  leftSide: false },
+    { name: "forest", url: 'textures/sample/forestLeft.ktx2', type: "stereoCubeMap",  leftSide: true },
+    { name: "forest", url: 'textures/sample/forestRight.ktx2', type: "stereoCubeMap",  leftSide: false },
 
-    // { name: "battlefield", url: 'textures/sample/battlefieldLeft.ktx2', type: "stereoCubeMap",  leftSide: false},
-    // { name: "battlefield", url: 'textures/sample/battlefieldRight.ktx2', type: "stereoCubeMap",  leftSide: true },
+    { name: "battlefield", url: 'textures/sample/battlefieldLeft.ktx2', type: "stereoCubeMap",  leftSide: false},
+    { name: "battlefield", url: 'textures/sample/battlefieldRight.ktx2', type: "stereoCubeMap",  leftSide: true },
 
 
 
@@ -394,6 +393,7 @@ function drawWebXREquirectangularLayer(layer, session, frame) {
 function drawWebXRCubeLayer(layer, session, frame) {
     redraw = false;
     let format = eval(layer.format);
+    console.log("format is?", format)
     let width = layer.Cube_Texture.source.data[0].width;
 
     if (!layer.stereo) {
@@ -486,6 +486,14 @@ export function getXRSpace() {
     return xrSpace;
 }
 
+export function getASTC() {
+    return ASTC_EXT;
+}
+
+export function getETC() {
+    return ETC_EXT;
+}
+
 
 
 function createLayer(imagename = 'textures/compressedCubeMaps/cubemapRight.ktx2') {
@@ -535,27 +543,6 @@ function onSessionStart() {
 
 
 
-// function createButton(name, callbackFunction, _offset){
-//     console.log(_offset)
-//     let button = document.createElement('button');
-//     button.onclick = () => { callbackFunction()}; //{}
-//     button.innerText = `Click Me ${name}`;
-//     button.style.zIndex = 1;
-//     button.className = "button";
-//     htmlContent.appendChild(button);
-
-//     // Create an HTMLMesh to attach the button to the plane
-//     let mesh = new HTMLMesh(button);
-//     mesh.position.x = - 0.75 ;
-//     mesh.position.y = 1.5 + _offset;
-//     mesh.position.z = - 0.5 ;
-//     mesh.rotation.y = Math.PI / 4;
-//     mesh.scale.setScalar(2);
-
-//     group.add(mesh);
-
-
-// }
 
 
 function createButton(name, callbackFunction, xOffset, yOffset) {
@@ -707,3 +694,58 @@ function createCubeFromCompressedTexture(texture, position = { x: 0, y: 2, z: -4
     cube.position.set(position.x, position.y, position.z);
     scene.add(cube);
 }
+
+
+
+// class WebXRCubeLayer {
+
+
+//     constructor(layer, Cube_Texture, Cube_Texture_Right, stereo, format) {
+//         this.layer = layer;
+//         this.Cube_Texture = Cube_Texture;
+//         this.Cube_Texture_Right = Cube_Texture_Right;
+//         this.stereo = stereo;
+//         this.format = format;
+//         this.type = "WebXRCubeLayer";
+//     }
+
+//     // Method to create the WebXR layer
+//     createLayer(texture = this.Cube_Texture) {
+
+
+//         if (!glBinding) { glBinding = getGLBinding() }
+//         if (!xrSpace) { xrSpace = getXRSpace() }
+        
+//         if(!ASTC_EXT) { ASTC_EXT = getASTC() }
+//         if(!ETC_EXT) { ETC_EXT = getETC()}
+
+
+//         // Logic to create the WebXR layer using this.active_Cube_Texture
+//         console.log("Creating WebXR layer with texture:", texture);
+//         console.log("height, widht", texture.source.data[0].width, texture.source.data[0].height);
+
+
+//         this.layer = glBinding.createCubeLayer({
+//             space: xrSpace,
+//             viewPixelWidth: texture.source.data[0].width,
+//             viewPixelHeight: texture.source.data[0].height,
+//             layout: this.stereo ? "stereo" : "mono",
+//             colorFormat: ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR,//eval(this.format),
+//             isStatic: false,
+
+//         });
+
+
+//     }
+//     renderLayer() {
+//         // Logic to render the WebXR layer
+//         console.log("Rendering WebXR layer");
+//         // Example: someRenderFunction(this.cubeLayer);
+//     }
+
+//     // Method to check if the layer is stereo
+//     isStereo() {
+//         return this.stereo;
+//     }
+// }
+
