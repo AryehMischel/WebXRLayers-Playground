@@ -161,6 +161,7 @@ export class WebXRCubeLayer {
 
         // Logic to create the WebXR layer using this.active_Cube_Texture
         console.log("Creating WebXR layer with texture:", texture);
+        console.log("height, widht", texture.source.data[0].width, texture.source.data[0].height);
 
 
         this.layer = glBinding.createCubeLayer({
@@ -168,7 +169,7 @@ export class WebXRCubeLayer {
             viewPixelWidth: texture.source.data[0].width,
             viewPixelHeight: texture.source.data[0].height,
             layout: this.stereo ? "stereo" : "mono",
-            colorFormat: this.format,
+            colorFormat: eval(this.format),
             isStatic: false,
 
         });

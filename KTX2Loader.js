@@ -9,6 +9,7 @@
  * References:
  * - KTX: http://github.khronos.org/KTX-Specification/
  * - DFD: https://www.khronos.org/registry/DataFormat/specs/1.3/dataformat.1.3.html#basicdescriptor
+ * - BasisU HDR: https://github.com/BinomialLLC/basis_universal/wiki/UASTC-HDR-Texture-Specification-v1.0
  */
 
 import {
@@ -17,18 +18,16 @@ import {
 	CompressedCubeTexture,
 	Data3DTexture,
 	DataTexture,
-	DisplayP3ColorSpace,
 	FileLoader,
 	FloatType,
 	HalfFloatType,
 	NoColorSpace,
 	LinearFilter,
 	LinearMipmapLinearFilter,
-	LinearDisplayP3ColorSpace,
 	LinearSRGBColorSpace,
 	Loader,
 	RedFormat,
-	RGB_ETC1_Format,
+	//RGB_ETC1_Format,
 	RGB_ETC2_Format,
 	RGB_PVRTC_4BPPV1_Format,
 	RGBA_ASTC_4x4_Format,
@@ -63,6 +62,7 @@ import {
 	VK_FORMAT_R8G8_UNORM,
 	VK_FORMAT_R8G8B8A8_SRGB,
 	VK_FORMAT_R8G8B8A8_UNORM,
+	VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK_EXT,
 	VK_FORMAT_ASTC_6x6_SRGB_BLOCK,
 	VK_FORMAT_ASTC_6x6_UNORM_BLOCK,
 	KHR_DF_PRIMARIES_UNSPECIFIED,
@@ -70,6 +70,7 @@ import {
 	KHR_DF_PRIMARIES_DISPLAYP3
 } from '../libs/ktx-parse.module.js';
 import { ZSTDDecoder } from '../libs/zstddec.module.js';
+import { DisplayP3ColorSpace, LinearDisplayP3ColorSpace } from '../math/ColorSpaces.js';
 
 const _taskCache = new WeakMap();
 
@@ -121,14 +122,14 @@ class KTX2Loader extends Loader {
 	}
 
 	async detectSupportAsync( renderer ) {
-		console.log("has it", await renderer.hasFeatureAsync( 'texture-compression-astc' ))
+
 		this.workerConfig = {
-			astcSupported: await renderer.hasFeatureAsync( 'texture-compression-astc' ),//false,//
-			etc1Supported: await renderer.hasFeatureAsync('texture-compression-etc1'),// await renderer.hasFeatureAsync( 'texture-compression-etc1' ),
-			etc2Supported: false,//await renderer.hasFeatureAsync( 'texture-compression-etc2' ),
-			dxtSupported: false,//await renderer.hasFeatureAsync( 'texture-compression-bc' ),
-			bptcSupported: false,//await renderer.hasFeatureAsync( 'texture-compression-bptc' )
-			pvrtcSupported: false, //await renderer.hasFeatureAsync( 'texture-compression-pvrtc' )
+			astcSupported: await renderer.hasFeatureAsync( 'texture-compression-astc' ),
+			etc1Supported: await renderer.hasFeatureAsync( 'texture-compression-etc1' ),
+			etc2Supported: await renderer.hasFeatureAsync( 'texture-compression-etc2' ),
+			dxtSupported: await renderer.hasFeatureAsync( 'texture-compression-bc' ),
+			bptcSupported: await renderer.hasFeatureAsync( 'texture-compression-bptc' ),
+			pvrtcSupported: await renderer.hasFeatureAsync( 'texture-compression-pvrtc' )
 		};
 
 		return this;
@@ -141,23 +142,23 @@ class KTX2Loader extends Loader {
 
 			this.workerConfig = {
 				astcSupported: renderer.hasFeature( 'texture-compression-astc' ),
-
-				etc1Supported: renderer.hasFeature('texture-compression-etc1'),
+				etc1Supported: renderer.hasFeature( 'texture-compression-etc1' ),
 				etc2Supported: renderer.hasFeature( 'texture-compression-etc2' ),
-				dxtSupported: false,//renderer.hasFeature( 'texture-compression-bc' ),
-				bptcSupported: false, //renderer.hasFeature( 'texture-compression-bptc' )
-				pvrtcSupported: false,//renderer.hasFeature( 'texture-compression-pvrtc' )
+				dxtSupported: renderer.hasFeature( 'texture-compression-bc' ),
+				bptcSupported: renderer.hasFeature( 'texture-compression-bptc' ),
+				pvrtcSupported: renderer.hasFeature( 'texture-compression-pvrtc' )
 			};
 
 		} else {
-			//this is for webgl...
+
 			this.workerConfig = {
-				astcSupported:  renderer.extensions.has( 'WEBGL_compressed_texture_astc' ), 
-				etc1Supported:  renderer.extensions.has( 'WEBGL_compressed_texture_etc1' ), 
+				astcSupported: renderer.extensions.has( 'WEBGL_compressed_texture_astc' ),
+				etc1Supported: renderer.extensions.has( 'WEBGL_compressed_texture_etc1' ),
 				etc2Supported: renderer.extensions.has( 'WEBGL_compressed_texture_etc' ),
-				dxtSupported: false,//renderer.extensions.has( 'WEBGL_compressed_texture_s3tc' )
-				bptcSupported: false, //renderer.extensions.has( 'EXT_texture_compression_bptc' )
-				pvrtcSupported: false//renderer.extensions.has( 'WEBGL_compressed_texture_pvrtc' || renderer.extensions.has( 'WEBKIT_WEBGL_compressed_texture_pvrtc' )
+				dxtSupported: false,//renderer.extensions.has( 'WEBGL_compressed_texture_s3tc' ),
+				bptcSupported: false,//renderer.extensions.has( 'EXT_texture_compression_bptc' ),
+				pvrtcSupported: false,//renderer.extensions.has( 'WEBGL_compressed_texture_pvrtc' )
+					//|| renderer.extensions.has( 'WEBKIT_WEBGL_compressed_texture_pvrtc' )
 			};
 
 		}
@@ -236,8 +237,8 @@ class KTX2Loader extends Loader {
 
 	}
 
-	load( url, onLoad, onProgress, onError, dataTarget) {
-		console.log(dataTarget)
+	load( url, onLoad, onProgress, onError ) {
+
 		if ( this.workerConfig === null ) {
 
 			throw new Error( 'THREE.KTX2Loader: Missing initialization with `.detectSupport( renderer )`.' );
@@ -251,33 +252,37 @@ class KTX2Loader extends Loader {
 
 		loader.load( url, ( buffer ) => {
 
-			// Check for an existing task using this buffer. A transferred buffer cannot be transferred
-			// again from this thread.
-			if ( _taskCache.has( buffer ) ) {
+			this.parse( buffer, onLoad, onError );
 
-				const cachedTask = _taskCache.get( buffer );
-
-				return cachedTask.promise.then( onLoad ).catch( onError );
-
-			}
-			console.log(buffer)
-
-			this._createTexture( buffer )
-				.then( ( texture ) => onLoad ? onLoad( texture ) : null )
-				.catch( onError );
-
-		}, onProgress, onError, dataTarget);
+		}, onProgress, onError );
 
 	}
 
-	_createTextureFrom(transcodeResult, container, dataTarget) {
-	
-		// console.log("creating texture from transcode results", transcodeResult.faces[0].mipmaps[0].data, transcodeResult.faces[0].height, transcodeResult.faces[0].width,  transcodeResult.format)
+	parse( buffer, onLoad, onError ) {
 
-		console.log(transcodeResult)
+		if ( this.workerConfig === null ) {
 
-		setImageData(transcodeResult.faces[0].mipmaps[0].data, transcodeResult.faces[0].height, transcodeResult.faces[0].width, )
+			throw new Error( 'THREE.KTX2Loader: Missing initialization with `.detectSupport( renderer )`.' );
 
+		}
+
+		// Check for an existing task using this buffer. A transferred buffer cannot be transferred
+		// again from this thread.
+		if ( _taskCache.has( buffer ) ) {
+
+			const cachedTask = _taskCache.get( buffer );
+
+			return cachedTask.promise.then( onLoad ).catch( onError );
+
+		}
+
+		this._createTexture( buffer )
+			.then( ( texture ) => onLoad ? onLoad( texture ) : null )
+			.catch( onError );
+
+	}
+
+	_createTextureFrom( transcodeResult, container ) {
 
 		const { faces, width, height, format, type, error, dfdFlags } = transcodeResult;
 
@@ -304,10 +309,7 @@ class KTX2Loader extends Loader {
 		texture.generateMipmaps = false;
 
 		texture.needsUpdate = true;
-		
 		texture.colorSpace = parseColorSpace( container );
-	
-		console.log("color space: ", texture.colorSpace)
 		texture.premultiplyAlpha = !! ( dfdFlags & KHR_DF_FLAG_ALPHA_PREMULTIPLIED );
 
 		return texture;
@@ -319,7 +321,7 @@ class KTX2Loader extends Loader {
 	 * @param {object?} config
 	 * @return {Promise<CompressedTexture|CompressedArrayTexture|DataTexture|Data3DTexture>}
 	 */
-	async _createTexture( buffer, config = {}, dataTarget ) {
+	async _createTexture( buffer, config = {} ) {
 
 		const container = read( new Uint8Array( buffer ) );
 
@@ -331,12 +333,11 @@ class KTX2Loader extends Loader {
 
 		//
 		const taskConfig = config;
-	
 		const texturePending = this.init().then( () => {
 
 			return this.workerPool.postMessage( { type: 'transcode', buffer, taskConfig: taskConfig }, [ buffer ] );
 
-		} ).then( ( e ) => this._createTextureFrom( e.data, container, dataTarget ) );
+		} ).then( ( e ) => this._createTextureFrom( e.data, container ) );
 
 		// Cache the task result.
 		_taskCache.set( buffer, { promise: texturePending } );
@@ -659,27 +660,21 @@ KTX2Loader.BasisWorker = function () {
 
 	function getTranscoderFormat( basisFormat, width, height, hasAlpha ) {
 
-		console.log("figuring out transcoder format")
 		let transcoderFormat;
 		let engineFormat;
 
 		const options = basisFormat === BasisFormat.ETC1S ? ETC1S_OPTIONS : UASTC_OPTIONS;
 
-		console.log("possible options ", options)
-	
 		for ( let i = 0; i < options.length; i ++ ) {
 
 			const opt = options[ i ];
-			// console.log( opt, opt.needsPowerOfTwo)
+
 			if ( ! config[ opt.if ] ) continue;
 			if ( ! opt.basisFormat.includes( basisFormat ) ) continue;
 			if ( hasAlpha && opt.transcoderFormat.length < 2 ) continue;
 			if ( opt.needsPowerOfTwo && ! ( isPowerOfTwo( width ) && isPowerOfTwo( height ) ) ) continue;
 
 			transcoderFormat = opt.transcoderFormat[ hasAlpha ? 1 : 0 ];
-			
-			// console.log("has alpha?", hasAlpha)
-			
 			engineFormat = opt.engineFormat[ hasAlpha ? 1 : 0 ];
 
 			return { transcoderFormat, engineFormat };
@@ -736,8 +731,7 @@ KTX2Loader.BasisWorker = function () {
 
 };
 
-//
-// Parsing for non-Basis textures. These textures are may have supercompression
+// Parsing for non-Basis textures. These textures may have supercompression
 // like Zstd, but they do not require transcoding.
 
 const UNCOMPRESSED_FORMATS = new Set( [ RGBAFormat, RGFormat, RedFormat ] );
@@ -759,6 +753,7 @@ const FORMAT_MAP = {
 	[ VK_FORMAT_R8_SRGB ]: RedFormat,
 	[ VK_FORMAT_R8_UNORM ]: RedFormat,
 
+	[ VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK_EXT ]: RGBA_ASTC_4x4_Format,
 	[ VK_FORMAT_ASTC_6x6_SRGB_BLOCK ]: RGBA_ASTC_6x6_Format,
 	[ VK_FORMAT_ASTC_6x6_UNORM_BLOCK ]: RGBA_ASTC_6x6_Format,
 
@@ -781,6 +776,7 @@ const TYPE_MAP = {
 	[ VK_FORMAT_R8_SRGB ]: UnsignedByteType,
 	[ VK_FORMAT_R8_UNORM ]: UnsignedByteType,
 
+	[ VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK_EXT ]: HalfFloatType,
 	[ VK_FORMAT_ASTC_6x6_SRGB_BLOCK ]: UnsignedByteType,
 	[ VK_FORMAT_ASTC_6x6_UNORM_BLOCK ]: UnsignedByteType,
 

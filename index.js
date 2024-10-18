@@ -66,31 +66,31 @@ scene.add(group);
 
 //create ktx2 loader ?maybe should be a function?
 ktx2Loader = new KTX2Loader();
-ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/libs/basis/');
+ktx2Loader.setTranscoderPath('https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/libs/basis/');
 ktx2Loader.detectSupport(renderer);
 ktx2Loader.setWorkerLimit(8);
 
 
 //mock data for gpu compressed textures
-// './textures/compressed360/bf4.ktx2', './textures/compressed360/Italy_Mountains.ktx2', './textures/compressed360/SnowySnow360.ktx2', './textures/compressed360/Mountain.ktx2',
+// './textures/compressed360/bf4.ktx2', ', './textures/compressed360/SnowySnow360.ktx2', './textures/compressed360/Mountain.ktx2',
 let sources = [
-    // { name: "cubemapRight", url: 'textures/compressedStereoCubeMaps/cubemap_uastc.ktx2', type: "cubemap" },
-    
-    // { name: "Gemini", url: 'textures/compressed360/2022_03_30_Gemini_North_360_Outside_08-CC_uastc.ktx2', type: "equirectangular" },
-    // { name: "bf4", url: 'textures/compressed360Stereo/bf4.ktx2', type: "stereoEquirectangular" },
-    // // { name: "bf4_1", url: 'textures/compressed360Stereo/bf4_uastc_1.ktx2', type: "stereoEquirectangular" },
-    // // { name: "bf4_2", url: 'textures/compressed360Stereo/bf4_uastc_2.ktx2', type: "stereoEquirectangular" },
-    // // { name: "bf4_3", url: 'textures/compressed360Stereo/bf4_uastc_3.ktx2', type: "stereoEquirectangular" },
 
 
-    // { name: "stereoCubeMap", url: 'textures/compressedCubeMaps/cubemapLeft.ktx2', type: "stereoCubeMap", leftSide: true },
-    // { name: "stereoCubeMap", url: 'textures/compressedCubeMaps/cubemapRight.ktx2', type: "stereoCubeMap", leftSide: false },
-    
-    { name: "unknownCubeMap", url: 'textures/compressedStereoCubeMaps/ktx2/cubemap_uastc.ktx2', type: "cubeMap"},
-    
-   
 
-    
+    // { name: "etcTest", url: './textures/compressed360/Mountain.ktx2', type: "equirectangular"},
+     { name: "skywhale", url: 'textures/snowyPark.ktx2', type: "cubeMap" },
+
+    // { name: "skywhale", url: 'textures/sample/skywhaleLeft.ktx2', type: "stereoCubeMap",  leftSide: true },
+    // { name: "skywhale", url: 'textures/sample/skywhaleRight.ktx2', type: "stereoCubeMap",  leftSide: false },
+
+    // { name: "forest", url: 'textures/sample/forestLeft.ktx2', type: "stereoCubeMap",  leftSide: true },
+    // { name: "forest", url: 'textures/sample/forestRight.ktx2', type: "stereoCubeMap",  leftSide: false },
+
+    // { name: "battlefield", url: 'textures/sample/battlefieldLeft.ktx2', type: "stereoCubeMap",  leftSide: false},
+    // { name: "battlefield", url: 'textures/sample/battlefieldRight.ktx2', type: "stereoCubeMap",  leftSide: true },
+
+
+
 ]
 
 
@@ -101,8 +101,13 @@ gl = renderer.getContext();
 const ASTC_EXT = gl.getExtension("WEBGL_compressed_texture_astc")
 const ETC_EXT = gl.getExtension("WEBGL_compressed_texture_etc")
 
-if (ASTC_EXT) console.log("ASTC_EXT", ASTC_EXT)
-if (ETC_EXT) console.log("ETC_EXT", ETC_EXT)
+if (ASTC_EXT){ console.log("ASTC_EXT", ASTC_EXT)}
+else{
+    console.log("no astc")
+}
+if (ETC_EXT){  console.log("ETC_EXT", ETC_EXT)} else{
+    console.log("no etc")
+}
 
 //Our three js compressed textures
 let compressed360Textures = []
@@ -112,24 +117,27 @@ let activeWebXRLayer = null;
 
 //supported compressed formats
 const supportedCompressedFormats = new Map([
-    [37496, "ETC_EXT.COMPRESSED_RGBA8_ETC2_EAC"],
+    [36196, "ETC_EXT.COMPRESSED_R11_EAC"],
+    [37496, "ETC_EXT.COMPRESSED_RGBA8_ETC2_EAC"], //COMPRESSED_RGBA8_ETC2_EAC
     [37492, "ETC_EXT.COMPRESSED_RGB8_ETC2"],
     [37808, "ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_4x4_KHR"],
-    [1023, "srgb"]
+    [1023, "srgb"],
+
 
 ]);
 
 
 
-//this is only necessary for gpu restricted devices. In fact this approach may only be necessary for those devices that support webxr layers
-//The underlying textures will also be used in the future for rendering outside the xr session and will then be stored in compressed360Textures or compressedCubeTextures. i.e this will be refactored
+//this is only necessary for gpu limited devices. 
+//The underlying textures will also be used in main application for rendering to threejs meshes outside the xr session 
+//the threejs meshes will be toggled on and off depending on the xr session state to keep the active media persistent as users enters or exits a session
 for (let i = 0; i < sources.length; i++) {
     createCompressedTextureLayer(sources[i]) //,is createLayerFromCompressedTexture a better name?
 }
 
 
 let offset = 0;
-//create a compressed texture and then create a webxr layer from that texture. 
+//create a compressed texture and then create a webxr layer from that texture.
 function createCompressedTextureLayer(image) {
 
     ktx2Loader.load(image.url,
@@ -139,10 +147,12 @@ function createCompressedTextureLayer(image) {
                 console.log("no compressed texture extensions available")
                 return
             }
+
+    
             // console.log(texture.format)
 
-            let format = eval(supportedCompressedFormats.get(texture.format))
            
+            let format = supportedCompressedFormats.get(texture.format)
             console.log("format", format)
 
             if (image.type === "stereoCubeMap") {
@@ -208,7 +218,7 @@ function createCompressedTextureLayer(image) {
                 //compressed360Textures.push(texture)
             }
 
-            // IMAGE FORMAT VALIDATION. 
+            // IMAGE FORMAT VALIDATION.
             // if (texture.isCompressedCubeTexture) {
             //     VALIDATE CUBE TEXTURE
             // } else if (texture.isCompressedTexture) {
@@ -251,7 +261,7 @@ function createEqrtLayerByIndex(index, stereo = false) {
 
 function createCubeLayer(texture, texture_right = null, stereo = false) {
 
-    let format = eval(supportedCompressedFormats.get(texture.format))
+    let format = texture.format//eval(supportedCompressedFormats.get(texture.format))
     let cubeLayer
 
     if (!stereo) {
@@ -321,7 +331,7 @@ function animate(t, frame) {
 
             glBinding = xr.getBinding();
             xrSpace = refSpace;
-            // createEquireLayer(compressed360Textures[0], null, false)    
+            // createEquireLayer(compressed360Textures[0], null, false)
 
 
         });
@@ -572,9 +582,9 @@ function createButton(name, callbackFunction, xOffset, yOffset) {
 
 
 
-// creating three js stats 
-// copying three js stats to a canvas texture 
-// creating a plane geometry, adding statsTexture to the plane and adding to scene as a worldspace ui element for vr 
+// creating three js stats
+// copying three js stats to a canvas texture
+// creating a plane geometry, adding statsTexture to the plane and adding to scene as a worldspace ui element for vr
 
 
 stats = new Stats();
@@ -607,7 +617,7 @@ setInterval(updateStatsMesh, 1000 / 60); // Update at 60 FPS
 function updateStatsMesh() {
     statsMaterial.needsUpdate = true;
     statsTexture.needsUpdate = true;
-    
+
 }
 
 
@@ -684,3 +694,16 @@ function createQuadLayer(imageURL = "./BF1.png") {
 }
 
 window.createQuadLayer = createQuadLayer
+
+
+//helper functions 
+
+
+//to test if textures are properly processed by threejs ktx2loader
+function createCubeFromCompressedTexture(texture, position = { x: 0, y: 2, z: -4 }) {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    const material = new THREE.MeshBasicMaterial({ envMap: texture, side: THREE.DoubleSide });
+    const cube = new THREE.Mesh(geometry, material);
+    cube.position.set(position.x, position.y, position.z);
+    scene.add(cube);
+}
