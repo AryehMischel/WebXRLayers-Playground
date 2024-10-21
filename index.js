@@ -100,7 +100,7 @@ async function loadAllFilesInFolders(sources, fileExtensions) {
     // console.log('All files in all folders are loaded');
 }
 
-if (ASTC_EXT) {
+// if (ASTC_EXT) {
     loadAllFilesInFolders(cubeMapSources, cubeMapFileExtensions)
         .then(() => {
             console.log('All files loaded successfully');
@@ -108,7 +108,7 @@ if (ASTC_EXT) {
         .catch((error) => {
             console.error('Error loading files:', error);
         });
-}
+// }
 
 // ;
 
