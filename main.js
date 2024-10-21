@@ -1,11 +1,6 @@
 import * as THREE from 'three';
-import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
-import { HTMLMesh } from 'three/addons/interactive/HTMLMesh.js';
-import { InteractiveGroup } from 'three/addons/interactive/InteractiveGroup.js';
-import { VRButton } from 'three/addons/webxr/VRButton.js';
 import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 import { XRHandModelFactory } from 'three/addons/webxr/XRHandModelFactory.js';
-import { KTX2Loader } from 'three/addons/loaders/KTX2Loader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { getGLBinding, getXRSpace, getASTC, getETC } from './index.js';
 
@@ -24,119 +19,158 @@ export function getScene() {
 }
 
 
-export class CustomControls {
-    constructor(camera, renderer) {
-        this.controls = new OrbitControls(camera, renderer.domElement);
-        this.controls.listenToKeyEvents(window); // optional
-        this.controls.enableDamping = true;
-        this.controls.dampingFactor = 0.25;
-        this.controls.enableZoom = true;
-        this.controls.screenSpacePanning = false;
-        this.controls.minDistance = 0;
-        this.controls.maxDistance = 500;
-        this.controls.maxPolarAngle = Math.PI / 2;
 
-        this.controls.keys = {
-            LEFT: 'KeyA',  // Use 'A' key to rotate left
-            UP: 'KeyW',    // Use 'W' key to rotate up
-            RIGHT: 'KeyD', // Use 'D' key to rotate right
-            BOTTOM: 'KeyS' // Use 'S' key to rotate down
-        };
+export function nullifyWebglBinding() {
+    if(glBinding) {
+        glBinding = null;
     }
+    if(xrSpace) {
+        xrSpace = null;
+    }
+   
 }
 
-export class CustomSkyCamera {
-    constructor() {
-        this.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.01, 1000);
-        this.camera.position.set(400, 200, 0);
-    }
 
+
+export function customSkyCamera(){
+    let camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(0, -3, 0);
+
+    return camera;
 }
 
-export function setupScene(scene, meshParent) {
+export function customControls(camera, renderer){
+    let controls = new OrbitControls(camera, renderer.domElement);
+    controls.listenToKeyEvents(window); // optional
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.25;
+    controls.enableZoom = true;
+    controls.screenSpacePanning = false;
+    controls.minDistance = 0.01;
+    controls.maxDistance = 100;
+    controls.maxPolarAngle = Math.PI / 2;
+
+    controls.keys = {
+        LEFT: 'KeyA',  // Use 'A' key to rotate left
+        UP: 'KeyW',    // Use 'W' key to rotate up
+        RIGHT: 'KeyD', // Use 'D' key to rotate right
+        BOTTOM: 'KeyS' // Use 'S' key to rotate down
+    };
+    return controls;
+}
+
+
+
+
+export function setupScene(scene) {
     const hemLight = new THREE.HemisphereLight(0x808080, 0x606060, 3);
     const light = new THREE.DirectionalLight(0xffffff, 3);
     scene.add(hemLight, light);
-
-    // let geometry = new THREE.ConeGeometry(10, 30, 4, 1);
-    // let material = new THREE.MeshPhongMaterial({ color: 0xffffff, flatShading: true });
-
-
-    // for (let i = 0; i < 500; i++) {
-
-    //     const mesh = new THREE.Mesh(geometry, material);
-    //     mesh.position.x = Math.random() * 1600 - 800;
-    //     mesh.position.y = 0;
-    //     mesh.position.z = Math.random() * 1600 - 800;
-    //     mesh.updateMatrix();
-    //     mesh.matrixAutoUpdate = false;
-    //     meshParent.add(mesh);
-
-    // }
-    // const dirLight1 = new THREE.DirectionalLight(0xffffff, 3);
-    // dirLight1.position.set(1, 1, 1);
-    // scene.add(dirLight1);
-
-    // const dirLight2 = new THREE.DirectionalLight(0x002288, 3);
-    // dirLight2.position.set(- 1, - 1, - 1);
-    // scene.add(dirLight2);
-
-    // const ambientLight = new THREE.AmbientLight(0x555555);
-    // scene.add(ambientLight);
-
 }
 
 
-export class CustomRenderer {
-    constructor() {
-        console.log("creating renderer")
-        this.renderer = new THREE.WebGLRenderer({ antialias: false });
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.precision = "lowp";
-        this.renderer.setClearAlpha(1);
-        this.renderer.setClearColor(new THREE.Color(0), 0);
-        this.renderer.xr.enabled = true;
+export function customRenderer(){
+    console.log("creating renderer from function ")
+    let renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.precision = "lowp";
+    renderer.setClearAlpha(1);
+    renderer.setClearColor(new THREE.Color(0), 0);
+    renderer.xr.enabled = true;
+    return renderer;
+}
 
+
+export function customControllers(scene, renderer){
+    const controllerModelFactory = new XRControllerModelFactory();
+    const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
+
+    const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, - 10)
+    ]);
+
+
+    const line = new THREE.Line(lineGeometry, new THREE.LineBasicMaterial({ color: 0x5555ff }));
+    line.renderOrder = 1;
+
+
+    let controllers = [
+        renderer.xr.getController(0),
+        renderer.xr.getController(1)
+    ];
+
+    controllers.forEach((controller, i) => {
+
+        const controllerGrip = renderer.xr.getControllerGrip(i);
+        controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
+        scene.add(controllerGrip);
+
+        const hand = renderer.xr.getHand(i);
+        hand.add(handModelFactory.createHandModel(hand));
+
+        controller.add(line.clone());
+        //update raycast line visual when intersecting with objects
+        controller.addEventListener('intersection', (e) => {
+            controller.children[0].geometry = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, e.data)]);
+
+        })
+        scene.add(controller, controllerGrip, hand);
+
+    });
+
+    return controllers;
+}
+
+
+//for testing, combine with WebXRCubeLayer and abstract the layer creation variables
+export class WebXRCubeLayerASTC {
+
+
+    constructor(faces, width, height, stereo) {
+        this.layer = null;
+        this.faces = faces;
+        console.log("faces lenght", faces.length);
+        this.stereo = stereo;
+        this.format = 37808;
+        this.width = width;
+        this.height = height;
+        this.type = "WebXRCubeLayerASTC";
+       
     }
-}
 
-export class CustomControllers {
-
-    constructor(scene, renderer) {
-        const controllerModelFactory = new XRControllerModelFactory();
-        const handModelFactory = new XRHandModelFactory().setPath('./models/fbx/');
-
-        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
-            new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(0, 0, - 10)
-        ]);
+    
+    // Method to create the WebXR layer
+    createLayer(texture = this.Cube_Texture) {
 
 
-        const line = new THREE.Line(lineGeometry, new THREE.LineBasicMaterial({ color: 0x5555ff }));
-        line.renderOrder = 1;
+        if (!glBinding) { glBinding = getGLBinding() }
+        if (!xrSpace) { xrSpace = getXRSpace() }
+        
+        if(!ASTC_EXT) { ASTC_EXT = getASTC() }
+        if(!ETC_EXT) { ETC_EXT = getETC()}
 
 
-        this.controllers = [
-            renderer.xr.getController(0),
-            renderer.xr.getController(1)
-        ];
 
-        this.controllers.forEach((controller, i) => {
 
-            const controllerGrip = renderer.xr.getControllerGrip(i);
-            controllerGrip.add(controllerModelFactory.createControllerModel(controllerGrip));
-            scene.add(controllerGrip);
-
-            const hand = renderer.xr.getHand(i);
-            hand.add(handModelFactory.createHandModel(hand));
-
-            controller.add(line.clone());
-            scene.add(controller, controllerGrip, hand);
+        this.layer = glBinding.createCubeLayer({
+            space: xrSpace,
+            viewPixelWidth: this.width,
+            viewPixelHeight: this.height,
+            layout: this.stereo ? "stereo" : "mono",
+            colorFormat: 37808, 
+            isStatic: false,
 
         });
+
+
     }
 
+     // Method to check if the layer is stereo
+     isStereo() {
+        return this.stereo;
+    }
 }
 
 
@@ -151,8 +185,10 @@ export class WebXRCubeLayer {
         this.stereo = stereo;
         this.format = format;
         this.type = "WebXRCubeLayer";
+       
     }
 
+    
     // Method to create the WebXR layer
     createLayer(texture = this.Cube_Texture) {
 
@@ -174,7 +210,7 @@ export class WebXRCubeLayer {
             viewPixelWidth: texture.source.data[0].width,
             viewPixelHeight: texture.source.data[0].height,
             layout: this.stereo ? "stereo" : "mono",
-            colorFormat: 37840,            // eval(this.format),
+            colorFormat: 37808,//RGBA_ASTC_4x4_Format,//eval('ASTC_EXT.COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR'),//eval(this.format), 
             isStatic: false,
 
         });
@@ -223,7 +259,7 @@ export class WebXREquirectangularLayer {
             viewPixelWidth: texture.mipmaps[0].width,
             viewPixelHeight: texture.mipmaps[0].height / (this.stereo ? 2 : 1),
             layout: this.stereo ? "stereo-top-bottom" : "mono",
-            colorFormat: this.format,
+            colorFormat: eval(this.format), //,            // eval(),
             isStatic: "true",
 
 
@@ -250,41 +286,48 @@ export class WebXREquirectangularLayer {
     }
 }
 
+
 export class WebXRQuadLayer {
 
-    constructor(image) {
+    constructor(texture, format, stereo = false, ) {
          this.layer = null;
-        // this.Equirectangular_Texture = Equirectangular_Texture;
-        // this.stereo = stereo;
-        // this.format = format;
-        // this.radius = radius;
-        this.image = image; 
-        this.type = "WebXRQuadLayer";
-        // this.type = "WebXREquirectangularLayer";
-        
+         this.texture = texture;
+         this.format = format;
+         this.type = "WebXRQuadLayer";
+         this.stereo = stereo;
+        //  console.log("viewPixelWidth, viewPixelHeight", texture.mipmaps[0].width, texture.mipmaps[0].height);
+        //  console.log("Creating WebXR layer with texture:", texture.mipmaps[0].width, texture.mipmaps[0].height);
+         console.log("format", this.format);
 
+        // this.stereo = stereo;
+        // this.radius = radius;
+        // this.type = "WebXREquirectangularLayer";
 
     }
 
     // Method to create the WebXR layer
-    createLayer(image = this.image) {
- 
+    createLayer(texture = this.texture) {
+       
         if (!glBinding) { glBinding = getGLBinding() }
         if (!xrSpace) { xrSpace = getXRSpace() }
+      
+        //console.log("Creating quad with format:", this.format);
+
 
         this.layer = glBinding.createQuadLayer({
             space: xrSpace,
-            viewPixelWidth: image.width,
-            viewPixelHeight: image.height,
+            viewPixelWidth: texture.mipmaps[0].width,
+            viewPixelHeight: texture.mipmaps[0].height,
             layout: "mono",
+            colorFormat: eval(this.format),
 
 
         });
 
 
-        this.layer.width = 2;
-        this.layer.height = 1;
-        let pos = { x: 0, y: 0, z: -2 };
+        this.layer.width = 10;
+        this.layer.height = 10;
+        let pos = { x: 0, y: 0, z: -10 };
         let orient = { x: 0, y: 0, z: 0, w: 1 };
         this.layer.transform = new XRRigidTransform(pos, orient);
 
@@ -295,7 +338,66 @@ export class WebXRQuadLayer {
 
     // Method to check if the layer is stereo
     isStereo() {
-        return this.stereo;
     }
 
 } 
+
+export class WebXRQuadUILayer {
+
+    constructor(image, name, width, height, depth, positionX, positionY, stereo = false) {
+        this.height = height;
+        this.width = width;
+        this.layer = null;
+        this.depth = depth;
+        this.stereo = stereo;
+        this.positionX = positionX;
+        console.log("positionX", positionX);
+        this.positionY = positionY;
+
+       // this.Equirectangular_Texture = Equirectangular_Texture;
+       // this.stereo = stereo;
+       // this.format = format;
+       // this.radius = radius;
+       this.image = image; 
+       this.type = "WebXRQuadUILayer";
+       // this.type = "WebXREquirectangularLayer";
+       
+
+
+   }
+
+   // Method to create the WebXR layer
+   createLayer(image = this.image) {
+
+       if (!glBinding) { glBinding = getGLBinding() }
+       if (!xrSpace) { xrSpace = getXRSpace() }
+
+       this.layer = glBinding.createQuadLayer({
+           space: xrSpace,
+           viewPixelWidth: image.width,
+           viewPixelHeight: image.height / (this.stereo? 2 : 1),
+           layout: this.stereo ? "stereo-top-bottom" : "mono",
+
+
+       });
+
+
+       this.layer.width = this.width;
+       this.layer.height = this.height;
+       let pos = { x: this.positionX, y: this.positionY, z: this.depth };
+       let orient = { x: 0, y: 0, z: 0, w: 1 };
+       this.layer.transform = new XRRigidTransform(pos, orient);
+
+
+   }
+
+   
+
+   // Method to check if the layer is stereo
+   isStereo() {
+       return this.stereo;
+   }
+
+} 
+
+
