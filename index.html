@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<style>
+    body {
+        background-color: #333;
+    }
+    header {
+        /* Add padding to the header */
+        background-color: #333333;
+        /* Optional: Add a background color to the header for better visibility */
+    }
+
+
+
+</style>
+
+<head>
+    <title>three.js vr - layers</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+</head>
+
+<body>
+
+    <header>
+        <h1 style="color: white; text-align: center; padding: 20px;"> DEMO: GPU Compressed Textures with The WebXR Layers API</h1>
+        <p style="color: white; text-align: center;">A demo of GPU compressed textures being used to render high quality images
+            via the WebXR Layer API in Three.js.</p>
+            <p style="color: white; text-align: center;">WebXR Layers is experimental and is only supported across a few headsets and browsers</p>
+    </header>
+
+
+</body>
+
+</html>
+
+<script src="./webxr-layers-polyfill.js"></script>
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+            "three/addons/": "./jsm/"
+        }
+    }
+</script>
+
+<script type="module" src="index.js"> </script>
