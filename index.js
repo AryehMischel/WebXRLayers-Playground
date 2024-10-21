@@ -110,6 +110,14 @@ if (ASTC_EXT) {
         });
 }
 
+// let url = 'https://compressedgputextures.s3.us-east-2.amazonaws.com/ny.astc';
+const response = await fetch(url);
+if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+}
+const arrayBuffer = await response.arrayBuffer();
+const rawData = new Uint8Array(arrayBuffer);
+console.log(rawData);
 
 
 
