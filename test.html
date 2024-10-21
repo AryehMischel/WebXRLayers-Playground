@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>three.js vr - layers</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+</head>
+
+<body>
+
+    <div id="info">
+        <a href="https://threejs.org" target="_blank" rel="noopener">three.js</a>
+        <br />
+        <p> ⭐ Experimenting to see if we can use gpu compressed texture for our webxr layers. </p>
+        <p> 😿 This is hurting my noob brain</p>
+        <p> 🥅 Goal create two webxr quad layers.</p>
+        <p> * One with an rgb data source </p>
+        <p> * The other whose source will be a gpu compressed texture</p>
+        <br />
+    </div>
+
+    <script src="./encoder/build/basis_loader.js"></script>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./three.js-master/three.js-master/build/three.module.js",
+                "three/addons/": "./three.js-master/three.js-master/examples/jsm/"
+            }
+        }
+    </script>
+
+ 
+
+</body>
+
+</html>
+<script type="module" src="./index.js"></script>
+<script>
+
+/*loose style guide
+
+JavaScript Style Guide
+Naming Conventions
+
+Classes: Use PascalCase (e.g., WebXRCubeLayer).
+Variables and Functions: Use camelCase (e.g., createCubeLayer, compressedCubeTextures).
+Constants: Use UPPER_SNAKE_CASE (e.g., MAX_TEXTURE_SIZE).
+Indentation and Spacing
+
+Not super consistent but ideally...
+Use 4 spaces for indentation.
+Use a single space after keywords (e.g., if (condition) {).
+Use a single space before opening braces { and after closing braces }.
+
+Semicolons: Always use semicolons to terminate statements.
+
+Braces: I tend to use braces for all control structures, even single-line statements. I could be convinced otherwise.
+
+
+
+Functions:
+Use arrow functions for anonymous functions.
+Use named functions for better stack traces.
+
+
+Error Handling: I really gotta start soon...
+
+
+Use double quotes for attribute values.
+Always include closing tags for elements.
+
+
+
+
+*/
+</script>
