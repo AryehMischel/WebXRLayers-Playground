@@ -56,7 +56,7 @@ const ASTC_EXT = gl.getExtension("WEBGL_compressed_texture_astc"); const ETC_EXT
 if (ASTC_EXT) { console.log("ASTC_EXT", ASTC_EXT) } else { alert("WARNING! This demo was created for VR ONLY.                                  Your Device or Browser does not support the required GPU compressed format.") }
 if (ETC_EXT) { console.log("ETC_EXT", ETC_EXT) } else { console.log("no webgl extension etc2 / eac") }
 
-
+let cdnPath = 'https://d1w8hynvb3moja.cloudfront.net/demo'
 let cubeMapFileExtensions = [
     'left/px.astc', 'left/nx.astc', 'left/py.astc', 'left/ny.astc', 'left/pz.astc', 'left/nz.astc',
     'right/px.astc', 'right/nx.astc', 'right/py.astc', 'right/ny.astc', 'right/pz.astc', 'right/nz.astc'
@@ -64,9 +64,9 @@ let cubeMapFileExtensions = [
 
 //cube map are stored as six image faces in the gpu compressed format COMPRESSED_SRGB8_ALPHA8_ASTC_8x8_KHR
 let cubeMapSources = [
-    { id: "dream", folder: './Assets/textures/dream', type: "stereoCubeMap", faces: [], width: 1536, height: 1536 },
-    { id: "forest", folder: './Assets/textures/forest', type: "stereoCubeMap", faces: [], width: 1536, height: 1536 },
-    { id: "battlefield", folder: './Assets/textures/battle', type: "stereoCubeMap", faces: [], width: 2048, height: 2048 },
+    { id: "dream", folder: `${cdnPath}/textures/dream`, type: "stereoCubeMap", faces: [], width: 1536, height: 1536 },
+    { id: "forest", folder: `${cdnPath}/textures/forest`, type: "stereoCubeMap", faces: [], width: 1536, height: 1536 },
+    { id: "battlefield", folder: `${cdnPath}/textures/battle`, type: "stereoCubeMap", faces: [], width: 2048, height: 2048 },
 
 ];
 
@@ -110,7 +110,7 @@ if (ASTC_EXT) {
         });
 }
 
-// let url = 'https://d1w8hynvb3moja.cloudfront.net/ny.astc';
+// ;
 
 // const response = await fetch(url);
 // if (!response.ok) {
