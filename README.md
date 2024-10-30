@@ -1,0 +1,1 @@
+This is just me experimenting with the WebXR Layers API. It is not well organized at the moment, but in the future I would like to put all my findings into a blog post and create some demos for people trying to use the API. 
