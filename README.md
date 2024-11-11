@@ -1,2 +1,2 @@
 A demo showcasing the use of WebXR Layers in concert with Compressed GPU Textures. <BR>
-In the [demo](https://webxrlayers.onrender.com), I am directly downloading the compressed GPU texture data (ASTC_8x8) <BR> and using it to create the stereo WebXRCubeLayer's. 
+In the [demo](https://webxrlayers.onrender.com), I am directly downloading the compressed GPU texture data (ASTC_8x8) <BR> and using it to create the stereo WebXRCubeLayer's. .When I have the time I will eventually write a blog post documenting the steps I've taken and the things I've learned. However, if anyone wants to learn more about these subjects all they need to do is follow the incredible work of Don Mccurdy ->  https://github.com/donmccurdy  -> https://www.donmccurdy.com/2024/02/11/web-texture-formats/
