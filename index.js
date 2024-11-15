@@ -53,7 +53,7 @@ gl = renderer.getContext();
 //get webgl compressed texture extensions
 const ASTC_EXT = gl.getExtension("WEBGL_compressed_texture_astc"); const ETC_EXT = gl.getExtension("WEBGL_compressed_texture_etc")
 
-if (ASTC_EXT) { console.log("ASTC_EXT", ASTC_EXT) } else { alert("WARNING! This demo was created for VR ONLY.                                  Your Device or Browser does not support the required GPU compressed format.") }
+if (ASTC_EXT) { console.log("ASTC_EXT", ASTC_EXT) } else { alert("WARNING! This demo was created for specific VR Hardware devices.                                  If you are seeing this warning it means Your Device or Browser does not support the required GPU compressed format (ASTC in this case).") }
 if (ETC_EXT) { console.log("ETC_EXT", ETC_EXT) } else { console.log("no webgl extension etc2 / eac") }
 
 let cdnPath = 'https://d1w8hynvb3moja.cloudfront.net/demo'
