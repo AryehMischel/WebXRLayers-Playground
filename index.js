@@ -6,7 +6,28 @@ import { customControls, customSkyCamera, setupScene, customRenderer, customCont
 
 
 let scene, camera, renderer, stats, controls, controllers, group, gl, glBinding, xrSpace, xrSession;
-let layersPolyfill = new WebXRLayersPolyfill()
+
+try{
+
+    let layersPolyfill = new WebXRLayersPolyfill()
+
+}catch{
+
+    if ('xr' in navigator) {
+        //weird. your device supports webxr but not the polyfill.
+        console.log("some issue with the polyfill.")
+        const element = document.querySelector('#  no-polyfill-message');
+        element.style.display = 'block';
+      
+
+    } else {
+        console.log("WebXR is not supported on this device.");
+        const element = document.querySelector('#no-webxr-message');
+        element.style.display = 'block';
+    }
+    
+
+}
 
 // to store WebXR Layers
 let layers = new Object();
@@ -62,7 +83,7 @@ if (ASTC_EXT) { console.log("ASTC_EXT", ASTC_EXT) } else {
      alert(
         "WARNING! This demo was created for specific VR Hardware devices." 
         + "If you are seeing this warning it means Your Device or Browser does not support the required GPU compressed format (ASTC in this case)." 
-        + "I will try and a demo with broader support soon!"
+        + "broader support coming soon!"
     ) 
     
     }
@@ -74,12 +95,6 @@ if (ETC_EXT) { console.log("ETC_EXT", ETC_EXT) } else {
 
  //check if webxr is supported. 
 
- console.log("supported?")
- if ('xr' in navigator) {
-    console.log("WebXR is supported!");
-} else {
-    console.log("WebXR is not supported on this device.");
-}
 
 
 let cdnPath = 'https://d1w8hynvb3moja.cloudfront.net/demo'

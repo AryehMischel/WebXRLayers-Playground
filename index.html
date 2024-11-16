@@ -28,13 +28,24 @@
             via the WebXR Layer API in Three.js.</p>
             <p style="color: white; text-align: center;">This demo is mostly just targeting Meta Headsets, however if we swapped out our "ASTC" texture format with a texture transcoded from ktx2 then with the help of polyfill this demo should work across all devices</p>
     </header>
+    
+    
+    <div id="no-webxr-message" class="no-webxr-message" style="display: none;text-align: center;">
+        <img src="https://compressedgputextures.s3.us-east-2.amazonaws.com/giphy.gif" style="display: inline-block;margin-top: 10vh;">
+        <div style="color: white; text-align: center; padding: 20px;font-size: 40px;"> :/ Your browser or device is not currently supporting the <a href="https://immersiveweb.dev/" target="_blank">WebXR API</a> </div>
+    </div>
+
+    <div id="no-polyfill-message" style="display: block;text-align: center;">
+        <img src="https://compressedgputextures.s3.us-east-2.amazonaws.com/giphy.gif" style="display: none;margin-top: 10vh;">
+        <div style="color: white; text-align: center; padding: 20px;font-size: 40px;">  Something went wrong, it appears to be an issue with the <a href="https://github.com/immersive-web/webxr-layers-polyfill" target="_blank">polyfill</a> component </div>
+    </div>
 
 
 </body>
 
 </html>
 
-<script src="./webxr-layers-polyfill.js"></script>
+
 <script type="importmap">
     {
         "imports": {
@@ -45,3 +56,4 @@
 </script>
 
 <script type="module" src="index.js"> </script>
+<script src="./webxr-layers-polyfill.js"></script>
