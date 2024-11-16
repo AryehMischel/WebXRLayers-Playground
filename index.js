@@ -50,11 +50,37 @@ let uiMesh;
 //webgl context
 gl = renderer.getContext();
 
-//get webgl compressed texture extensions
-const ASTC_EXT = gl.getExtension("WEBGL_compressed_texture_astc"); const ETC_EXT = gl.getExtension("WEBGL_compressed_texture_etc")
+//get webgl compressed texture extensions. 
+//We are currently only using the ASTC extension. 
+// ASTC is known to be the superior format, especially when quality is a concern.
+//The main benifit I see in etc vs astc is the fast transcoding time from ktx2, but I will do more research.
 
-if (ASTC_EXT) { console.log("ASTC_EXT", ASTC_EXT) } else { alert("WARNING! This demo was created for specific VR Hardware devices. If you are seeing this warning it means Your Device or Browser does not support the required GPU compressed format (ASTC in this case).") }
-if (ETC_EXT) { console.log("ETC_EXT", ETC_EXT) } else { console.log("no webgl extension etc2 / eac") }
+const ASTC_EXT = gl.getExtension("WEBGL_compressed_texture_astc"); 
+const ETC_EXT = gl.getExtension("WEBGL_compressed_texture_etc")
+
+if (ASTC_EXT) { console.log("ASTC_EXT", ASTC_EXT) } else {
+     alert(
+        "WARNING! This demo was created for specific VR Hardware devices." 
+        + "If you are seeing this warning it means Your Device or Browser does not support the required GPU compressed format (ASTC in this case)." 
+        + "I will try and a demo with broader support soon!"
+    ) 
+    
+    }
+
+if (ETC_EXT) { console.log("ETC_EXT", ETC_EXT) } else { 
+    console.log("no webgl extension etc2 / eac")
+ }
+
+
+ //check if webxr is supported. 
+
+ console.log("supported?")
+ if ('xr' in navigator) {
+    console.log("WebXR is supported!");
+} else {
+    console.log("WebXR is not supported on this device.");
+}
+
 
 let cdnPath = 'https://d1w8hynvb3moja.cloudfront.net/demo'
 let cubeMapFileExtensions = [
