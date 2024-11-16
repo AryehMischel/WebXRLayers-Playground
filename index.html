@@ -2,16 +2,30 @@
 <html lang="en">
 <style>
     body {
-        background-color: #333;
+        font-size: large;
+        height: auto;
+        color: rgb(255, 255, 255);
+        font-family: Georgia, 'Times New Roman', Times, serif;
+        font-weight: bolder;
+        word-spacing: normal;
+        letter-spacing: normal;
+        background: url('https://compressedgputextures.s3.us-east-2.amazonaws.com/016+Deep+Blue.png') no-repeat center center fixed;
+        background-size: cover;
+        padding-left: 10%;
+        padding-right: 10%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
     }
+
     header {
         /* Add padding to the header */
-        background-color: #333333;
+        max-width: 1200px;
+        background-color: #ffffff00;
+        font-family: Georgia, 'Times New Roman', Times, serif;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         /* Optional: Add a background color to the header for better visibility */
     }
-
-
-
 </style>
 
 <head>
@@ -23,21 +37,28 @@
 <body>
 
     <header>
-        <h1 style="color: white; text-align: center; padding: 20px;"> DEMO: GPU Compressed Textures with The WebXR Layers API</h1>
-        <p style="color: white; text-align: center;">A demo of GPU compressed textures being used to render high quality images
-            via the WebXR Layer API in Three.js.</p>
-            <p style="color: white; text-align: center;">This demo is mostly targeting the Meta hardware, however we can swap our "ASTC" texture format with a texture transcoded from KTX2. At that point the demo should work across devices</p>
+        <h1 style="text-align: center; padding: 20px;"> DEMO: WebXR Layers with Compressed GPU Textures</h1>
+        <p style=" text-align: center;">A demo using the WebXR Layer API to render high quality stereo images with the help of compressed GPU textures.</p>
+        <p style=" text-align: center;">This demo is mostly targeting the <span style="color:aquamarine; font-weight: 1100;">Meta hardware</span>, however in the future we can easily make this
+            demo work across devices by using a <a 
+                href="https://github.com/BinomialLLC/basis_universal?tab=readme-ov-file#intro" target="_blank">basis
+                universal intermediate file format.</a> </p>
     </header>
-    
-    
+
+
     <div id="no-webxr-message" class="no-webxr-message" style="display: none;text-align: center;">
-        <img src="https://compressedgputextures.s3.us-east-2.amazonaws.com/giphy.gif" style="display: inline-block;margin-top: 10vh;">
-        <div style="color: white; text-align: center; padding: 20px;font-size: 40px;"> :/ Your browser or device is not currently supporting the <a href="https://immersiveweb.dev/" target="_blank">WebXR API</a> </div>
+        <img src="https://compressedgputextures.s3.us-east-2.amazonaws.com/giphy.gif"
+            style="display: inline-block;margin-top: 10vh;">
+        <div style="color: white; text-align: center; padding: 20px;font-size: 40px;"> :/ Your browser or device is not
+            currently supporting the <a href="https://immersiveweb.dev/" target="_blank">WebXR API</a> </div>
     </div>
 
     <div id="no-polyfill-message" style="display: none;text-align: center;">
-        <img src="https://compressedgputextures.s3.us-east-2.amazonaws.com/giphy.gif" style="display: none;margin-top: 10vh;">
-        <div style="color: white; text-align: center; padding: 20px;font-size: 40px;">  Something went wrong, it appears to be an issue with the <a href="https://github.com/immersive-web/webxr-layers-polyfill" target="_blank">polyfill</a> component </div>
+        <img src="https://compressedgputextures.s3.us-east-2.amazonaws.com/giphy.gif"
+            style="display: none;margin-top: 10vh;">
+        <div style="color: white; text-align: center; padding: 20px;font-size: 40px;"> Something went wrong, it appears
+            to be an issue with the <a href="https://github.com/immersive-web/webxr-layers-polyfill"
+                target="_blank">polyfill</a> component </div>
     </div>
 
 

@@ -78,13 +78,15 @@ const ASTC_EXT = gl.getExtension("WEBGL_compressed_texture_astc");
 const ETC_EXT = gl.getExtension("WEBGL_compressed_texture_etc")
 
 if (ASTC_EXT) { console.log("ASTC_EXT", ASTC_EXT) } else {
-     alert(
-        "WARNING! This demo was created for specific VR Hardware devices." 
-        + "If you are seeing this warning it means Your Device or Browser does not support the required GPU compressed format (ASTC in this case)." 
-        + "broader support coming soon!"
-    ) 
-    
-    }
+
+    setTimeout(() => {
+        alert(
+            "WARNING!"
+            + "\nThis demo is for specific VR Hardware devices." 
+            + "\nIf you are seeing this warning it means Your Device or Browser does not support the required compressed GPU format (ASTC)." 
+        );
+    }, 1000);
+}
 
 if (ETC_EXT) { console.log("ETC_EXT", ETC_EXT) } else { 
     console.log("no webgl extension etc2 / eac")
