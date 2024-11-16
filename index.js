@@ -16,14 +16,12 @@ try{
     if ('xr' in navigator) {
         //weird. your device supports webxr but not the polyfill.
         console.log("some issue with the polyfill.")
-        const element = document.querySelector('#  no-polyfill-message');
+        const element = document.querySelector('#no-polyfill-message');
         element.style.display = 'block';
       
-
     } else {
         console.log("WebXR is not supported on this device.");
-        const element = document.querySelector('#no-webxr-message');
-        element.style.display = 'block';
+  
     }
     
 
